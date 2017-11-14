@@ -1,13 +1,5 @@
 # MIS612 Class Project
-# Group
-
-#--------------------------------------------------------------------------------------------------
-
-# Set working directory to your project folder
-setwd("~/Documents/*SCHOOL/*Drexel/MIS 612 - Info Systems & Busn Strats/MIS612 Project")
-
-# Load workspace (optional)
-load("MIS612 Project.RData")
+# Main Script
 
 #--------------------------------------------------------------------------------------------------
 ### Import Data
