@@ -8,6 +8,7 @@
 
   # install.packages("tidyverse")
   # install.packages("pacman")
+  # install.packages("qdap")
   # install.packages("tm")
   # install.packages("reshape")
   # install.packages('RQDA')
@@ -17,23 +18,36 @@
   ## install.packages("sentiment") # unavailable for R 3.4.1
 
 #--------------------------------------------------------------------------------------------------
-### Import Data
-library(tidyverse)
+### Collect Data
 
-# First, determine what data to use:
-  # Data provided for the class (see "provided data" folder), or
-  # Data scraped from Amazon (see "scrapeAmazon.R" or those data)
-# Note: datasets should align fairly closely, scraped data has advantage of having stars
-
-# Import data
-data <- read_sas("ugss.sas7bdat")
-
-# creating new df "cdata" (clean data) for non-destructive cleaning
-cdata.df <- as.data.frame(data)
-attach(cdata.df)
+# see scrapeAmazon.R
 
 #--------------------------------------------------------------------------------------------------
-### Data Cleaning
+### Raw Data Cleaning
+
+# see firstClean.R
+
+#--------------------------------------------------------------------------------------------------
+### Aggregate data
+
+# Read in cleaned data
+
+# Stack individual frames into single large
+
+# Combine $title and $comment
+
+# Recognize date as date
+
+# Drop user
+
+# Create version with and without star ratings
+  # Note: this may really fuck us if we don't keep both datasets up to date.  
+
+
+#--------------------------------------------------------------------------------------------------
+### Create Training Set
+
+
 
 
 #-------------------------------------------------------------------------------------------------- 

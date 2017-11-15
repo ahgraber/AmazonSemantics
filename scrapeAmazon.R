@@ -6,14 +6,15 @@
 # Uncomment and run the first time to ensure all packages are installed
   # install.packages("tidyverse")
   # install.packages("pacman")
+  # install.packages("qdap")
 
 #--------------------------------------------------------------------------------------------------
 library(pacman)
 library(xml2)
 
 ### Reference: https://justrthings.wordpress.com/2016/08/17/web-scraping-and-sentiment-analysis-of-amazon-reviews/
-#Source function to Parse Amazon html pages for data
-source("amazon_scraper.R")
+# Source function to Parse Amazon html pages for data
+# source("amazon_scraper.R")
 source("amazon_scraper_simple.R")
 
 
@@ -60,29 +61,4 @@ for(page_num in 1:pages){
   spotify.df <- reviews_all
   write.csv(spotify.df, "Spotify.csv")
   
-#--------------------------------------------------------------------------------------------------
-  ### Data Cleaning
-  # Create cleaned .csv files ready for multiple different analyses
-  
-  # Function to remove leading and trailing whitespace
-  trim <- function(x) gsub("^\\s+|\\s+$", "", x)
-  trim(cdata.df)
 
-  # Replace carriage returns with space - currently this breaks CSV the csv
-  cdata.df <- gsub("[\r\n]", " ", cdata.df)
-
-  # Replaces commas  with space
-  cdata.df <- gsub("[,]", " ", cdata.df)
-
-  # Replaces dashes  with space
-  cdata.df <- gsub("[-]", " ", cdata.df)
-
-  # Remove multiple spaces in strings
-  doublespace <- function (x) gsub("\\s+", " ", x)
-  trim(cdata.df)
-
-  # Convert all upper case to lower case
-  cdata.df <- tolower (cdata.df)
-  
-  ##Save the new data frame in the project folder
-  write.csv (cdata.df, file="cdata.csv")
