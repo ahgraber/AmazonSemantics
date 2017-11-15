@@ -41,7 +41,7 @@
 
 # Drop user
 
-# Create version with and without star ratings
+# Create version with and without star ratings 
   # Note: this may really fuck us if we don't keep both datasets up to date.  
 
 
