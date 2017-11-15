@@ -10,6 +10,7 @@
   # install.packages("pacman")
   # install.packages("qdap")
   # install.packages("tm")
+  # install.packages("textstem")
   # install.packages("reshape")
   # install.packages('RQDA')
   # install.packages("tidytext")
@@ -60,6 +61,7 @@
   # install.packages("reshape")
 library(tm)  # see: https://cran.r-project.org/web/packages/tm/vignettes/tm.pdf
 library(reshape)
+library(textstem)
 
 ## Import data file (if needed)
 # cdata.df <- read.csv ("cdata.csv", stringsAsFactors=FALSE)

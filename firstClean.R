@@ -20,6 +20,7 @@ readin <- function(x) {
 }
 
 # Assuming you have a folder named "Provided Data" where the data provided for the project lives...
+  # Not using this, since we'll be using scraped data
 # dataPath <- paste(getwd(),"/Provided Data",sep="") 
 
 # Assuming you have a folder named "Scraped Data" where the data provided for the project lives...
