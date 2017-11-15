@@ -2,13 +2,30 @@
 # Main Script
 
 #--------------------------------------------------------------------------------------------------
+### Install packages
+
+  # Uncomment and run the first time to ensure all packages are installed
+
+  # install.packages("tidyverse")
+  # install.packages("pacman")
+  # install.packages("tm")
+  # install.packages("reshape")
+  # install.packages('RQDA')
+  # install.packages("tidytext")
+  # install.packages("RSentiment") # see: https://cran.r-project.org/web/packages/RSentiment/vignettes/Introduction.html
+  # install.packages("SentimentAnalysis") # see: https://cran.r-project.org/web/packages/SentimentAnalysis/vignettes/SentimentAnalysis.html
+  ## install.packages("sentiment") # unavailable for R 3.4.1
+
+#--------------------------------------------------------------------------------------------------
 ### Import Data
+library(tidyverse)
 
-# Install haven to read SAS files
-  # install.packages("haven")
-library("haven")
+# First, determine what data to use:
+  # Data provided for the class (see "provided data" folder), or
+  # Data scraped from Amazon (see "scrapeAmazon.R" or those data)
+# Note: datasets should align fairly closely, scraped data has advantage of having stars
 
-# Import
+# Import data
 data <- read_sas("ugss.sas7bdat")
 
 # creating new df "cdata" (clean data) for non-destructive cleaning
@@ -18,29 +35,6 @@ attach(cdata.df)
 #--------------------------------------------------------------------------------------------------
 ### Data Cleaning
 
-# AG Note: I don't think we need this (at least, as the code is currently).  Everything gets taken
-# care of in the next section.
-
-## Clean up the text for analysis
-# Note: not needed if importing corpus properly?
-  # # Function to remove leading and trailing whitespace
-  # trim <- function(x) gsub("^\\s+|\\s+$", "", x)
-  # trim(cdata.df)
-  # 
-  # # Replace carriage returns with space
-  # cdata.df <- gsub("[\r\n]", " ", cdata.df)
-  # 
-  # # Replaces commas  with space
-  # cdata.df <- gsub("[,]", " ", cdata.df)
-  # 
-  # # Replaces dashes  with space
-  # cdata.df <- gsub("[-]", " ", cdata.df)
-  # 
-  # # Convert all upper case to lower case
-  # cdata.df <- tolower (cdata.df)
-
-##Save the new data frame in the project folder
-write.csv (cdata.df, file="cdata.csv")
 
 #-------------------------------------------------------------------------------------------------- 
 ### Text Mining 
