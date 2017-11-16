@@ -23,10 +23,14 @@
 
 # see scrapeAmazon.R
 
+  ### Goal - turn this into a function to call
+
 #--------------------------------------------------------------------------------------------------
 ### Raw Data Cleaning
 
 # see firstClean.R
+
+  ### Goal - turn this into a function to call
 
 #--------------------------------------------------------------------------------------------------
 ### Aggregate data

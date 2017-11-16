@@ -5,6 +5,7 @@
 #Parse Amazon html pages for data
 amazon_scraper_simple <- function(doc, delay = 0){
   
+  # Package manager
   if(!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman")
   pacman::p_load_gh("trinker/sentimentr")
   pacman::p_load(RCurl, XML, dplyr, stringr, rvest, audio)
