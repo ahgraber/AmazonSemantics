@@ -57,7 +57,25 @@ write.csv(data.df, "data.csv")
 
   ### Goal - turn this into a function to call
 
-# Clean big data file
+# Import data (if needed)
+source("readin.R")
+
+  # Assuming you have a folder named "Scraped Data" where the data provided for the project lives...
+  dataPath <- paste(getwd(),"/Scraped Data",sep="") 
+  
+  # Import data w/ appropriate col typing
+  data.df <- readin(fil.path(dataPath,))
+  
+  # amazon.df <- readin(file.path(dataPath,"Amazon.csv"))
+  # iheartradio.df <- readin(file.path(dataPath,"iHeartRadio.csv"))
+  # pandora.df <- readin(file.path(dataPath,"Pandora.csv"))
+  # spotify.df <- readin(file.path(dataPath,"Spotify.csv"))
+  
+  # Build
+
+firstClean
+  # Build   
+  # Clean big data file
 # Then, keep full output frame, but also resplit it by product
 
 #--------------------------------------------------------------------------------------------------
@@ -91,7 +109,8 @@ write.csv(data.df, "data.csv")
 # Install text mining and reshape packages
   # install.packages("tm")
   # install.packages("reshape")
-library(tm)  # see: https://cran.r-project.org/web/packages/tm/vignettes/tm.pdf
+#library(tm)  # see: https://cran.r-project.org/web/packages/tm/vignettes/tm.pdf
+library(quanteda)
 library(reshape2)
 library(textstem)
 
