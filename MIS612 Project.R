@@ -7,15 +7,17 @@
   # Uncomment and run the first time to ensure all packages are installed
 
   # install.packages("tidyverse")
-  # install.packages("pacman")
   # install.packages("qdap")
-  # install.packages("tm")
-  # install.packages("textstem")
-  # install.packages("reshape")
-  # install.packages('RQDA')
+  # install.packages("quanteda")
+  ## install.packages("tm")
+
+  ## install.packages("textstem")
+  # install.packages("reshape2") 
+  # install.packages('stm')
+  ## install.packages('RQDA')
   # install.packages("tidytext")
-  # install.packages("RSentiment") # see: https://cran.r-project.org/web/packages/RSentiment/vignettes/Introduction.html
-  # install.packages("SentimentAnalysis") # see: https://cran.r-project.org/web/packages/SentimentAnalysis/vignettes/SentimentAnalysis.html
+  ## install.packages("RSentiment") # see: https://cran.r-project.org/web/packages/RSentiment/vignettes/Introduction.html
+  ## install.packages("SentimentAnalysis") # see: https://cran.r-project.org/web/packages/SentimentAnalysis/vignettes/SentimentAnalysis.html
   ## install.packages("sentiment") # unavailable for R 3.4.1
 
 #--------------------------------------------------------------------------------------------------
@@ -90,7 +92,7 @@ write.csv(data.df, "data.csv")
   # install.packages("tm")
   # install.packages("reshape")
 library(tm)  # see: https://cran.r-project.org/web/packages/tm/vignettes/tm.pdf
-library(reshape)
+library(reshape2)
 library(textstem)
 
 ## Import data file (if needed)
