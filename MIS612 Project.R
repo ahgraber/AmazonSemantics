@@ -89,11 +89,12 @@ firstClean
 
 # Recognize date as date
 
-# Drop user
+# Drop usercccxs
 
 # Create version with and without star ratings 
   # Note: this may really fuck us if we don't keep both datasets up to date.  
 
+# remove contractions
 
 #--------------------------------------------------------------------------------------------------
 ### Create Training Set
