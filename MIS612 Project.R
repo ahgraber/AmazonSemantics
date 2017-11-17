@@ -20,10 +20,33 @@
 
 #--------------------------------------------------------------------------------------------------
 ### Collect Data
+source("scrapeAmazon.R")
 
-# see scrapeAmazon.R
+# What to scrape?  *** Scraping steaming music apps - NOTE: AMAZON/ANDROID ONLY ***
 
-  ### Goal - turn this into a function to call
+# # Amazon: https://www.amazon.com/product-reviews/B004FRX0MY/ref=acr_dpappstore_text?ie=UTF8&showViewpoints=1
+# amazon.df <- scrapeAmazon("Amazon", "B004FRX0MY", 1379, delay=2)
+# # Save data 
+# write.csv(amazon.df, "Amazon.csv")
+# 
+# # iHeartRadio: https://www.amazon.com/product-reviews/B005ZFOOE8/ref=acr_dpappstore_text?ie=UTF8&showViewpoints=1
+# iheartradio.df <- scrapeAmazon("iHeartRadio", "B005ZFOOE8", 1384, delay=2)
+# # Save data 
+# write.csv(iheartradio.df, "iHeartRadio.csv")
+# 
+# # Pandora: https://www.amazon.com/product-reviews/B005V1N71W/ref=acr_dpappstore_text?ie=UTF8&showViewpoints=1
+# pandora.df <- scrapeAmazon("Pandora", "B005V1N71W", 1979, delay=2)
+# # Save data 
+# write.csv(pandora.df, "Pandora.csv")
+# 
+# # Spotify: https://www.amazon.com/product-reviews/B00KLBR6IC/ref=acr_dpappstore_text?ie=UTF8&showViewpoints=1
+# spotify.df <- scrapeAmazon("Spotify", "B00KLBR6IC", 1504, delay=2)
+# # Save data 
+# write.csv(spotify.df, "Spotify.csv")
+
+# # Aggregate all data into master file
+data.df <- rbind(amazon.df, iheartradio.df, pandora.df, spotify.df)
+write.csv(data.df, "data.csv")
 
 #--------------------------------------------------------------------------------------------------
 ### Raw Data Cleaning
@@ -31,6 +54,9 @@
 # see firstClean.R
 
   ### Goal - turn this into a function to call
+
+# Clean big data file
+# Then, keep full output frame, but also resplit it by product
 
 #--------------------------------------------------------------------------------------------------
 ### Aggregate data

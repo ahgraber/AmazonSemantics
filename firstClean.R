@@ -69,19 +69,20 @@ nomultispace <- function(x) gsub("\\s+", " ", x)
 # There MUST be a smarter way to do this quickly, but I can't figure it out right now, so... 
 # brute force it is
 
-# First, combine all data frames into single data frame
-# Then, (m/l/s)apply cleaning functions
-  data.list <- trim(data.list)
-  data.list <- nonewlines(data.list)
-  data.list <- nocommas(data.list)
-  data.list <- nodashes(data.list)
-  data.list <- noapostrophe(data.list)
-  data.list <- noquotes(data.list)
-  data.list <- nobrackets(data.list)
-  data.list <- nospecialchar(data.list)
-  data.list <- nomultispace(data.list)
-  data.list <- tolower(data.list)
-# Then, keep full out put frame, but also resplit it by product
+
+# Apply cleaning functions to each column of the data frame
+  df <- mapply(trim, df)
+  df <- mapply(nonewlines, df)
+  df <- mapply(nocommas, df)
+  df <- mapply(nodashes, df)
+  df <- mapply(noapostrophe, df)
+  df <- mapply(noquotes, df)
+  df <- mapply(nobrackets, df)
+  df <- mapply(nospecialchar, df)
+  df <- mapply(nomultispace, df)
+  df <- mapply(tolower, df)
+  
+
 
 
   
