@@ -42,8 +42,8 @@ firstClean <- function(df) {
   
   #--------------------------------------------------------------------------------------------------
 
-  # report potential issues pre-clean
-  check_text(df)
+  # report potential issues pre-clean - NOTE: TIME INTENSIVE, USE WITH SMALL DATA
+  # check_text(df)
   
   # Take data and run through cleaning process
   
@@ -68,8 +68,8 @@ firstClean <- function(df) {
 
     #df <- mapply(replace_non_ascii,as.data.frame(df))
 
-    # check text post-clean
-    check_text(df)
+    # check text post-clean - NOTE: TIME INTENSIVE, USE WITH SMALL DATA
+    # check_text(df)
     
     return(as.data.frame(df))
 }

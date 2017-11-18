@@ -9,16 +9,20 @@
 ###* note "##" means we did not end up using this package
 
 # install.packages("tidyverse")
-## install.packages("qdap")
 # install.packages("textclean")
 # install.packages("quanteda")
-## install.packages("tm")
-
-## install.packages("textstem")
+# install.packages("stringr")
+# install.packages("NLP")
 # install.packages("reshape2") 
 # install.packages('stm')
-## install.packages('RQDA')
+
 # install.packages("tidytext")
+
+## install.packages("qdap")
+## install.packages("textstem")
+## install.packages("tm")
+## install.packages('RQDA')
+
 ## install.packages("RSentiment") # see: https://cran.r-project.org/web/packages/RSentiment/vignettes/Introduction.html
 ## install.packages("SentimentAnalysis") # see: https://cran.r-project.org/web/packages/SentimentAnalysis/vignettes/SentimentAnalysis.html
 ## install.packages("sentiment") # unavailable for R 3.4.1
@@ -62,6 +66,7 @@ source("scrapeAmazon.R")
 # Initialize scripts
 source("readin.R")
 source("firstClean.R")
+dataPath <- paste(getwd(),"/Scraped Data",sep="") 
 
 # Import data w/ appropriate col typing
 data.df <- readin(file.path(dataPath,"data.csv"))
@@ -94,6 +99,7 @@ write.csv(c.data.df, file.path(dataPath,"c.data.csv"))
 
 # Initialize scripts
 source("readin.R")
+dataPath <- paste(getwd(),"/Scraped Data",sep="") 
 
 # Import data w/ appropriate col typing
 c.data.df <- readin(file.path(dataPath,"c.data.csv"))
