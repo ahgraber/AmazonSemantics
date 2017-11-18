@@ -4,21 +4,27 @@
 #--------------------------------------------------------------------------------------------------
 ### Install packages
 
-  # Uncomment and run the first time to ensure all packages are installed
+# Uncomment and run the first time to ensure all packages are installed
 
-  # install.packages("tidyverse")
-  # install.packages("qdap")
-  # install.packages("quanteda")
-  ## install.packages("tm")
+###* note "##" means we did not end up using this package
 
-  ## install.packages("textstem")
-  # install.packages("reshape2") 
-  # install.packages('stm')
-  ## install.packages('RQDA')
-  # install.packages("tidytext")
-  ## install.packages("RSentiment") # see: https://cran.r-project.org/web/packages/RSentiment/vignettes/Introduction.html
-  ## install.packages("SentimentAnalysis") # see: https://cran.r-project.org/web/packages/SentimentAnalysis/vignettes/SentimentAnalysis.html
-  ## install.packages("sentiment") # unavailable for R 3.4.1
+# install.packages("tidyverse")
+## install.packages("qdap")
+# install.packages("textclean")
+# install.packages("quanteda")
+## install.packages("tm")
+
+## install.packages("textstem")
+# install.packages("reshape2") 
+# install.packages('stm')
+## install.packages('RQDA')
+# install.packages("tidytext")
+## install.packages("RSentiment") # see: https://cran.r-project.org/web/packages/RSentiment/vignettes/Introduction.html
+## install.packages("SentimentAnalysis") # see: https://cran.r-project.org/web/packages/SentimentAnalysis/vignettes/SentimentAnalysis.html
+## install.packages("sentiment") # unavailable for R 3.4.1
+
+# Assuming you have a folder named "Scraped Data" where the data provided for the project lives...
+dataPath <- paste(getwd(),"/Scraped Data",sep="") 
 
 #--------------------------------------------------------------------------------------------------
 ### Collect Data
@@ -47,58 +53,58 @@ source("scrapeAmazon.R")
 # write.csv(spotify.df, "Spotify.csv")
 
 # # Aggregate all data into master file
-data.df <- rbind(amazon.df, iheartradio.df, pandora.df, spotify.df)
-write.csv(data.df, "data.csv")
+# data.df <- rbind(amazon.df, iheartradio.df, pandora.df, spotify.df)
+# write.csv(data.df, file.path(dataPath,"data.csv"))
 
 #--------------------------------------------------------------------------------------------------
 ### Raw Data Cleaning
 
-# see firstClean.R
-
-  ### Goal - turn this into a function to call
-
-# Import data (if needed)
+# Initialize scripts
 source("readin.R")
+source("firstClean.R")
 
-  # Assuming you have a folder named "Scraped Data" where the data provided for the project lives...
-  dataPath <- paste(getwd(),"/Scraped Data",sep="") 
-  
-  # Import data w/ appropriate col typing
-  data.df <- readin(fil.path(dataPath,))
-  
-  # amazon.df <- readin(file.path(dataPath,"Amazon.csv"))
-  # iheartradio.df <- readin(file.path(dataPath,"iHeartRadio.csv"))
-  # pandora.df <- readin(file.path(dataPath,"Pandora.csv"))
-  # spotify.df <- readin(file.path(dataPath,"Spotify.csv"))
-  
-  # Build
+# Import data w/ appropriate col typing
+data.df <- readin(file.path(dataPath,"data.csv"))
 
-firstClean
-  # Build   
-  # Clean big data file
-# Then, keep full output frame, but also resplit it by product
+# create data frame of stuff not-to-clean (dates, stars, etc)
+preserve.df <- cbind.data.frame(data.df$prod, data.df$date, data.df$stars,  ## NOTE: DROPS AUTHOR!!!
+                                stringsAsFactors=FALSE)  
 
-#--------------------------------------------------------------------------------------------------
-### Aggregate data
+colnames(preserve.df) <- c('Product', 'Date', 'Stars')
+preserve.df$Product <- as.factor(preserve.df$Product)
+preserve.df$Date <- as.Date(preserve.df$Date, format="%B%d,%Y")
 
-# Read in cleaned data
+# create data frame of just review to be cleaned
+toclean.df <- as.data.frame(paste(data.df$title," ",data.df$comments))
 
-# Stack individual frames into single large
+# clean reviews and app
+cleaned.df <- firstClean(toclean.df)
 
-# Combine $title and $comment
+# combine reviews and formatted other stuff
+c.data.df <- cbind(preserve.df,cleaned.df)
+colnames(c.data.df) <- c('Product', 'Date', 'Stars','Review')
+c.data.df$Product <- as.factor(c.data.df$Product)
+c.data.df$Date <- as.Date(c.data.df$Date, format="%B%d,%Y")
 
-# Recognize date as date
-
-# Drop usercccxs
-
-# Create version with and without star ratings 
-  # Note: this may really fuck us if we don't keep both datasets up to date.  
-
-# remove contractions
+# save cleaned data
+write.csv(c.data.df, file.path(dataPath,"c.data.csv"))
 
 #--------------------------------------------------------------------------------------------------
 ### Create Training Set
 
+# Initialize scripts
+source("readin.R")
+
+# Import data w/ appropriate col typing
+c.data.df <- readin(file.path(dataPath,"c.data.csv"))
+colnames(c.data.df) <- c('Product', 'Date', 'Stars','Review')
+c.data.df$Product <- as.factor(c.data.df$Product)
+c.data.df$Date <- as.Date(c.data.df$Date, format="%B%d,%Y")
+
+
+#--------------------------------------------------------------------------------------------------
+
+### Corpus Generation
 
 
 

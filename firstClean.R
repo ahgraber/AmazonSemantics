@@ -1,90 +1,78 @@
-### Read scraped data and run initial clean
+### Functions and transformation for initial clean
 
 #--------------------------------------------------------------------------------------------------
-### Install packages
+firstClean <- function(df) {
 
-# Uncomment and run the first time to ensure all packages are installed
-  # install.packages("qdap")
-
-#--------------------------------------------------------------------------------------------------
-### Data Cleaning
-
-# Package manager
-if(!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman")
-pacman::p_load(qdap)
-
-# Create cleaned .csv files ready for multiple different analyses
-
-# Duplicate data
-readin <- function(x) {
-  read.csv(x,
-           colClasses=c('NULL','character','character','character','character','numeric','character'), 
-           stringsAsFactors = FALSE)
-}
-
-# Assuming you have a folder named "Scraped Data" where the data provided for the project lives...
-dataPath <- paste(getwd(),"/Scraped Data",sep="") 
-
-c.amazon.df <- readin(file.path(dataPath,"Amazon.csv"))
-c.iheartradio.df <- readin(file.path(dataPath,"iHeartRadio.csv"))
-c.pandora.df <- readin(file.path(dataPath,"Pandora.csv"))
-c.spotify.df <- readin(file.path(dataPath,"Spotify.csv"))
-
-data.list <- list(c.amazon.df,c.iheartradio.df,c.pandora.df,c.spotify.df)
-
-#--------------------------------------------------------------------------------------------------
-### Aggregate list of cleaning functions 
-  # Note: Keeping at a relatively granular level so we can control exactly what we're cleaning
-
-# Function to remove leading and trailing whitespace
-trim <- function(x) gsub("^\\s+|\\s+$", "", x)
-
-# Replace carriage returns with space 
-  # use caution, this can break format and collapse all rows into single row
-nonewlines <- function(x) gsub("[\r\n]", " ", x)
-
-# Replaces commas, periods, exclamations with space
-nocommas <- function(x) gsub("[,.!]", " ", x)
-
-# Replaces dashes with a space
-nodashes <- function(x) gsub("[-]", " ", x)
-
-# Replaces ' and " with a space
-noapostrophe <- function(x) gsub("[']", " ", x)
-noquotes <- function(x) gsub('["]', " ", x)
-
-# Remove []{}()
-nobrackets <- function(x) rm_bracket(x, pattern = "all", trim = FALSE, clean = FALSE,
-                                     replacement = "",extract = FALSE)
-
-# Replaces other punctionation @#$%^&* with a space
-nospecialchar <- function(x) gsub("[@#$%^&*]", " ", x)
-
-# Remove multiple spaces in strings
-nomultispace <- function(x) gsub("\\s+", " ", x)
-
-# Convert all upper case to lower case
-# use 'tolower(x)'
-
-#--------------------------------------------------------------------------------------------------
-# Take data and run through cleaning process
-
-# There MUST be a smarter way to do this quickly, but I can't figure it out right now, so... 
-# brute force it is
-
-
-# Apply cleaning functions to each column of the data frame
-  df <- mapply(trim, df)
-  df <- mapply(nonewlines, df)
-  df <- mapply(nocommas, df)
-  df <- mapply(nodashes, df)
-  df <- mapply(noapostrophe, df)
-  df <- mapply(noquotes, df)
-  df <- mapply(nobrackets, df)
-  df <- mapply(nospecialchar, df)
-  df <- mapply(nomultispace, df)
-  df <- mapply(tolower, df)
+  # Package manager
+  if(!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman")
+  pacman::p_load(textclean)
   
+#--------------------------------------------------------------------------------------------------
+  ### Aggregate list of cleaning functions 
+    # Note: Keeping at a relatively granular level so we can control exactly what we're cleaning
+  
+  # Function to remove leading and trailing whitespace
+  trim <- function(x) gsub("^\\s+|\\s+$", "", x)
+  
+  # Replace carriage returns with space 
+    # use caution, this can break format and collapse all rows into single row
+  nonewlines <- function(x) gsub("[\r\n]", " ", x)
+  
+  # Replaces commas, periods, exclamations with space
+  nocommas <- function(x) gsub("[,.!]", " ", x)
+  
+  # Replaces dashes with a space
+  nodashes <- function(x) gsub("[-]", " ", x)
+  
+  # Replaces ' and " with a space
+  noapostrophe <- function(x) gsub("[']", " ", x)
+  noquotes <- function(x) gsub('["]', " ", x)
+  
+  # Remove []{}()
+  nobrackets <- function(x) gsub("\\[|\\]|\\{|\\}|\\(|\\)", "", x)
+  
+  # Replaces other punctionation @#$%^&* with a space
+  nospecialchar <- function(x) gsub("[@#$%^&*]", " ", x)
+  
+  # Remove multiple spaces in strings
+  nomultispace <- function(x) gsub("\\s+", " ", x)
+  
+  # Convert all upper case to lower case
+  # use 'tolower(x)'
+  
+  #--------------------------------------------------------------------------------------------------
+
+  # report potential issues pre-clean
+  check_text(df)
+  
+  # Take data and run through cleaning process
+  
+  # Apply cleaning functions to each column of the data frame
+    df <- mapply(trim, as.data.frame(df))
+    df <- mapply(nonewlines, as.data.frame(df))
+    df <- mapply(nocommas, as.data.frame(df))
+    df <- mapply(nodashes, as.data.frame(df))
+    df <- mapply(noapostrophe, as.data.frame(df))
+    df <- mapply(noquotes, as.data.frame(df))
+    df <- mapply(nobrackets, as.data.frame(df))
+    #df <- mapply(nospecialchar, as.data.frame(df))
+    df <- mapply(nomultispace, as.data.frame(df))
+    df <- mapply(tolower, as.data.frame(df))
+    
+    # textclean functions!!
+    df <- mapply(replace_contraction,as.data.frame(df))
+    df <- mapply(replace_symbol,as.data.frame(df))
+    #df <- mapply(replace_ordinal,as.data.frame(df))
+    #df <- mapply(replace_number,as.data.frame(df))
+    df <- mapply(replace_emoticon,as.data.frame(df))
+
+    #df <- mapply(replace_non_ascii,as.data.frame(df))
+
+    # check text post-clean
+    check_text(df)
+    
+    return(as.data.frame(df))
+}
 
 ### I think everything below here can get deleted
 #--------------------------------------------------------------------------------------------------

@@ -1,8 +1,9 @@
 # Duplicate data
 readin <- function(x) {
-  read.csv(x,
-           colClasses=c('NULL','character','character','character','character','numeric','character'), 
-           stringsAsFactors = FALSE)
+  df <- read.csv(x, stringsAsFactors = FALSE)
+  df <- df[,-1]
+  
+  return(as.data.frame(df))
 }
 
 
