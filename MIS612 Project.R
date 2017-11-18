@@ -27,9 +27,6 @@
 ## install.packages("SentimentAnalysis") # see: https://cran.r-project.org/web/packages/SentimentAnalysis/vignettes/SentimentAnalysis.html
 ## install.packages("sentiment") # unavailable for R 3.4.1
 
-# Assuming you have a folder named "Scraped Data" where the data provided for the project lives...
-dataPath <- paste(getwd(),"/Scraped Data",sep="") 
-
 #--------------------------------------------------------------------------------------------------
 ### Collect Data
 source("scrapeAmazon.R")
@@ -58,7 +55,7 @@ source("scrapeAmazon.R")
 
 # # Aggregate all data into master file
 # data.df <- rbind(amazon.df, iheartradio.df, pandora.df, spotify.df)
-# write.csv(data.df, file.path(dataPath,"data.csv"))
+# write.csv(data.df, file.path(paste(getwd(),"Scraped Data",sep="/"),"data.csv"))
 
 #--------------------------------------------------------------------------------------------------
 ### Raw Data Cleaning
@@ -66,10 +63,9 @@ source("scrapeAmazon.R")
 # Initialize scripts
 source("readin.R")
 source("firstClean.R")
-dataPath <- paste(getwd(),"/Scraped Data",sep="") 
 
 # Import data w/ appropriate col typing
-data.df <- readin(file.path(dataPath,"data.csv"))
+data.df <- readin(filename="data.csv", folder="Scraped Data", infolder=TRUE)
 
 # create data frame of stuff not-to-clean (dates, stars, etc)
 preserve.df <- cbind.data.frame(data.df$prod, data.df$date, data.df$stars,  ## NOTE: DROPS AUTHOR!!!
@@ -99,19 +95,37 @@ write.csv(c.data.df, file.path(dataPath,"c.data.csv"))
 
 # Initialize scripts
 source("readin.R")
-dataPath <- paste(getwd(),"/Scraped Data",sep="") 
+source("randomSample.R")
 
 # Import data w/ appropriate col typing
-c.data.df <- readin(file.path(dataPath,"c.data.csv"))
+c.data.df <- readin(filename="c.data.csv", folder="Scraped Data", infolder=TRUE)
 colnames(c.data.df) <- c('Product', 'Date', 'Stars','Review')
 c.data.df$Product <- as.factor(c.data.df$Product)
-c.data.df$Date <- as.Date(c.data.df$Date, format="%B%d,%Y")
+c.data.df$Date <- as.Date(c.data.df$Date)
 
+# Randomly select 30 percent of the data and store it in a data frame
+training.df <- randomsample(c.data.df, 30)
+
+# save training subset
+write.csv(training.df, file.path(dataPath,"training.csv"))
 
 #--------------------------------------------------------------------------------------------------
 
 ### Corpus Generation
 
+# Initialize scripts
+source("readin.R")
+source("Corpus.R") 
+
+# Import data w/ appropriate col typing
+training.df <- readin(file.path(dataPath,"training.csv"))
+colnames(training.df) <- c('Product', 'Date', 'Stars','Review')
+training.df$Product <- as.factor(training.df$Product)
+training.df$Date <- as.Date(training.df$Date)
+
+#
+# script to generate corpus, dtm
+#
 
 
 #-------------------------------------------------------------------------------------------------- 
@@ -119,10 +133,6 @@ c.data.df$Date <- as.Date(c.data.df$Date, format="%B%d,%Y")
   ## First, explore the open responses using the Text Mining package and look for frequently
   ## occurring words, associations between words as well as other text mining functions.
 
-# Install text mining and reshape packages
-  # install.packages("tm")
-  # install.packages("reshape")
-#library(tm)  # see: https://cran.r-project.org/web/packages/tm/vignettes/tm.pdf
 library(quanteda)
 library(reshape2)
 library(textstem)
@@ -158,7 +168,7 @@ melt(inspect (cdata.dtm [,"success"]))
 findFreqTerms(cdata.dtm, lowfreq=10) ##Terms that appear 10+ times 
 
 # Counts for top words
-freqwrds <- sort (colSums (as.matrix(cdata.dtm)),decreasing=TRUE)
+freqwrds <- sort (colSums (as.matrix(mydata)),decreasing=TRUE)
 
 # Returns top 100 words
 melt(freqwrds [1:100])

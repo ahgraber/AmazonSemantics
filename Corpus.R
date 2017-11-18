@@ -19,7 +19,7 @@ textbag <- corpus(amazon.df$comments)
 mytok <- tokens(textbag ,remove_numbers = TRUE,  remove_punct = TRUE,remove_separators = TRUE)
 mytok <- gsub(pattern = "\\b[A-z]\\b{1}", replacement = " ",mytok) #replace flying letters
 #remove stopwords
-mydata <- dfm(mytok, remove = stopwords("english"), stem = TRUE)
+mydata <- dfm(mytok, remove = stopwords("english"), stem = FALSE)
 
 #Top features in the textbag
 topfeatures(mydata,20) #frequency of top 20 words
