@@ -1,12 +1,15 @@
 #CORPUS
+
+#install.package("quanteda")
+
 #creating corpus split at every space
-textbag <- str_split(amazon.df$review,pattern = "\\s+")
+textbag <- str_split(amazon.df$review,pattern = "\\s+") #can also use tokens(amazon.df$review)
 #from list to character
 textbag <- unlist(textbag)
 
 #get positive and negative words
-poswords <- scan('poswords.txt', what = 'character', comment.char = ';')
-negwords <- scan('negwords.txt', what = 'character', comment.char = ';')
+poswords <- scan('poswords.txt', what = 'character', comment.char = ';') #edit to pref
+negwords <- scan('negwords.txt', what = 'character', comment.char = ';') #edit to pref
 
 #get number of positive words for each review
 pscore <- unlist(lapply(textbag,function(x){
