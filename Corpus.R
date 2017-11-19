@@ -7,6 +7,7 @@ library(quanteda)
 library(stringr)
 library(NLP)
 library(tm)
+library(RCurl)
 
 #readcsv
 amazon.df <- read.csv("D:/Coursework syllabus/quarter 1/MIS 612/Class project/Github/MIS612/Scraped Data/Amazon_firstcleaned.csv")
@@ -18,12 +19,13 @@ textbag <- corpus(amazon.df$comments)
 #tokenizing
 mytok <- tokens(textbag ,remove_numbers = TRUE,  remove_punct = TRUE,remove_separators = TRUE)
 mytok <- gsub(pattern = "\\b[A-z]\\b{1}", replacement = " ",mytok) #replace flying letters
+
 #remove stopwords
 mydata <- dfm(mytok, remove = stopwords("english"), stem = TRUE)
+mydata <- dfm(mydata, remove = c("amazon","app","music")) #remove other common words
 
 #Top features in the textbag
 topfeatures(mydata,20) #frequency of top 20 words
-
 
 #get positive and negative words
 poswords <- scan("D:/Coursework syllabus/quarter 1/MIS 612/Class project/Github/MIS612/poswords.txt", what = 'character', comment.char = ';') #edit to pref
