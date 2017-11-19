@@ -12,15 +12,19 @@
 # install.packages("textclean")
 # install.packages("quanteda")
 # install.packages("stringr")
-# install.packages("NLP")
+# install.packages("textstem")
 # install.packages("reshape2") 
-# install.packages('stm')
+# install.packages("stm")
+# install.packages("hunspell")
+# install.packages("NLP")
+
+# install.packages("devtools")
+# devtools::install_github("ahgraber/tmt")
 
 # install.packages("tidytext")
 
-## install.packages("qdap")
-## install.packages("textstem")
 ## install.packages("tm")
+## install.packages("qdap")
 ## install.packages('RQDA')
 
 ## install.packages("RSentiment") # see: https://cran.r-project.org/web/packages/RSentiment/vignettes/Introduction.html
@@ -88,7 +92,7 @@ c.data.df$Product <- as.factor(c.data.df$Product)
 c.data.df$Date <- as.Date(c.data.df$Date, format="%B%d,%Y")
 
 # save cleaned data
-write.csv(c.data.df, file.path(dataPath,"c.data.csv"))
+write.csv(c.data.df, file.path(paste(getwd(),"Scraped Data",sep = "/"),"c.data.csv"))
 
 #--------------------------------------------------------------------------------------------------
 ### Create Training Set
@@ -104,97 +108,154 @@ c.data.df$Product <- as.factor(c.data.df$Product)
 c.data.df$Date <- as.Date(c.data.df$Date)
 
 # Randomly select 30 percent of the data and store it in a data frame
-training.df <- randomsample(c.data.df, 30)
+training.df <- randomSample(c.data.df, 30)
 
 # save training subset
-write.csv(training.df, file.path(dataPath,"training.csv"))
+write.csv(training.df, file.path(paste(getwd(),"Scraped Data",sep = "/"),"training.csv"))
 
 #--------------------------------------------------------------------------------------------------
-
-### Corpus Generation
+### Training Data
 
 # Initialize scripts
+library(quanteda)
+library(textstem)
+
+#library(stringr)
+# library(tm)
 source("readin.R")
-source("Corpus.R") 
 
 # Import data w/ appropriate col typing
-training.df <- readin(file.path(dataPath,"training.csv"))
+training.df <- readin(filename="training.csv", folder="Scraped Data", infolder=TRUE)
 colnames(training.df) <- c('Product', 'Date', 'Stars','Review')
 training.df$Product <- as.factor(training.df$Product)
 training.df$Date <- as.Date(training.df$Date)
 
-#
-# script to generate corpus, dtm
-#
+#-------------------------------------------------------------------------------------------------- 
+### check for typos - currently not working.  output is no different from input
 
+# see fixTypos1.R and fixTypos2.R
+
+# fixTypos2 is probably the best option at this point, but requires external program installation
+# see notes in fixTypos2.R for further information
 
 #-------------------------------------------------------------------------------------------------- 
-### Text Mining 
-  ## First, explore the open responses using the Text Mining package and look for frequently
-  ## occurring words, associations between words as well as other text mining functions.
+### Create corpora
 
-library(quanteda)
-library(reshape2)
-library(textstem)
+# creating corpus split at every space
+textbag <- corpus(training.df$Review)
+  # add potentially relevant additional data back to corpus
+  docvars(textbag, "Product") <- training.df$Product
+  docvars(textbag, "Date") <- training.df$Date
+  docvars(textbag, "Stars") <- training.df$Stars
 
-## Import data file (if needed)
-# cdata.df <- read.csv ("cdata.csv", stringsAsFactors=FALSE)
+  summary(textbag)
 
-# Create a corpus for text mining
-cdata.corpus <- Corpus(DataframeSource (cdata.df))
+# creating corpus split at every space with lemmas
+lembag <- corpus(lemmatize_strings(training.df$Review,dictionary = lexicon::hash_lemmas))
+  # add potentially relevant additional data back to corpus
+  docvars(lembag, "Product") <- training.df$Product
+  docvars(lembag, "Date") <- training.df$Date
+  docvars(lembag, "Stars") <- training.df$Stars
 
-# Eliminate extra spaces
-cdata.corpus <- tm_map(cdata.corpus, content_transformer(stripWhitespace))
+  summary(lembag)
 
-# Force lower case
-cdata.corpus <- tm_map(cdata.corpus, content_transformer(tolower)) 
+#-------------------------------------------------------------------------------------------------- 
+### Stopword management### Stopword management
+  
+# see wordListMgmt.R
+SMART.list <- readin("SMART_stop.txt", folder="Lists", infolder=T)
+en.list <- readin("en_stop.txt", folder="Lists", infolder=T)
+stopwords.df <- as.data.frame(c(SMART.list, en.list))
+  
+#-------------------------------------------------------------------------------------------------- 
+### Synonym management
+  
+# see wordListMgmt.R 
+  
 
-# Remove Punctuation
-cdata.corpus <- tm_map(cdata.corpus, content_transformer(removePunctuation))
+#-------------------------------------------------------------------------------------------------- 
+### Tokenization
+  ### Don't need tokens directly b/c we can pass the same arguments straight through to build a DTM
+  
+#-------------------------------------------------------------------------------------------------- 
+### Document-Term Matrix creation, cleaning, simplification
 
-# build a document-term matrix
-## do we want a document-term or term-document matrix??
-  # **DocumentTermMatrix create a matrix with documents as rows and terms as columns
-  # TermDocumentMatrix create a matrix with terms as rows and documents as columns
-cdata.dtm <- DocumentTermMatrix(cdata.corpus, control = list(stopwords=stopwords("en"), 
-                                                             stemming=FALSE))  # can we lemmatize?
-# Lemmatize vs stem: try lemmatize_words() from textstem package
+# Create Doc-Term Matrix from corpus; w/ lemma replacement and stemming, and stopwords removed
+docMatrix <- dfm(lembag,
+                  remove_numbers = TRUE, remove_punct = TRUE, remove_separators = TRUE,
+                  remove = stopwords("english"), stem = TRUE)
 
-# Shows cases where "success" appears. 
-# If "Subscript out of bounds" error, word does not appear
-melt(inspect (cdata.dtm [,"success"])) 
+# Top 50 words
+topfeatures(docMatrix, 50)
 
-# inspect most popular words
-findFreqTerms(cdata.dtm, lowfreq=10) ##Terms that appear 10+ times 
 
-# Counts for top words
-freqwrds <- sort (colSums (as.matrix(mydata)),decreasing=TRUE)
+# create Doc-Term Matrix grouping by App
+docMatrixApp <- dfm(lembag, ## lembag vs textbag
+                     groups = "Product",
+                     remove_numbers = TRUE, remove_punct = TRUE, remove_separators = TRUE,
+                     remove = stopwords("english"), stem = TRUE)
 
-# Returns top 100 words
-melt(freqwrds [1:100])
+# create Doc-Term Matrix grouping by Star Rating
+docMatrixStar <- dfm(lembag, ## lembag vs textbag
+                     groups = "Stars",
+                     remove_numbers = TRUE, remove_punct = TRUE, remove_separators = TRUE,
+                     remove = stopwords("english"), stem = TRUE)
 
-# Associations of word "success" with other terms
-findAssocs(cdata.dtm, "success", 0.2)
+
+# ngrams and negations https://github.com/kbenoit/quanteda/issues/516
 
 #--------------------------------------------------------------------------------------------------
-### Thematic coding with RQDA
+### Themes & Topic models 
 
-# AG Note: this isn't necessary yet.
+# see:https://cran.r-project.org/web/packages/quanteda/vignettes/quickstart.html#corpus-management-tools 
 
-### Following instructions from: 
-  # https://dugontario.files.wordpress.com/2013/12/qualitative-analysis-in-r.pdf 
+### Build dictionary for hypothesized themes
+# myDict <- dictionary(list(terror = c("terrorism", "terrorists", "threat"),
+#                           economy = c("jobs", "business", "grow", "work")))
 
-# Install RQDA
-  ## Note: installation was REALLY difficult on my mac - 
-  ## may have to follow instructions from 'sanjulr' here: https://gist.github.com/sebkopf/9405675
-  # install.packages('RQDA')
+# byPresMat <- dfm(recentCorpus, dictionary = myDict)
+# byPresMat
 
-# library(RQDA)
+
+# quantdfm <- dfm(data_corpus_irishbudget2010, 
+#                 remove_punct = TRUE, remove_numbers = TRUE, remove = stopwords("english"))
+# quantdfm <- dfm_trim(quantdfm, min_count = 4, max_docfreq = 10, verbose = TRUE)
+# ## Removing features occurring:
+# ##   - fewer than 4 times: 3,527
+# ##   - in more than 10 documents: 72
+# ##   Total features removed: 3,599 (73.8%).
+# quantdfm
+# ## Document-feature matrix of: 14 documents, 1,279 features (64.6% sparse).
 # 
-# RQDA()
-# codingBySearch("student", ##word or phrase you want to search
-#                fid="1",##FileID, from GUI
-#                cid="1") ##CodeID, from GUI
+# if (require(topicmodels)) {
+#   myLDAfit20 <- LDA(convert(quantdfm, to = "topicmodels"), k = 20)
+#   get_terms(myLDAfit20, 5)
+# }
+
+#--------------------------------------------------------------------------------------------------
+
+# Similarities between apps or star ratings
+
+# see:https://cran.r-project.org/web/packages/quanteda/vignettes/quickstart.html#corpus-management-tools 
+
+# presDfm <- dfm(corpus_subset(data_corpus_inaugural, Year > 1980), 
+#                remove = stopwords("english"), stem = TRUE, remove_punct = TRUE)
+# obamaSimil <- textstat_simil(presDfm, c("2009-Obama" , "2013-Obama"), 
+#                              margin = "documents", method = "cosine")
+
+# data(data_corpus_SOTU, package = "quantedaData")
+# presDfm <- dfm(corpus_subset(data_corpus_SOTU, Date > as.Date("1980-01-01")), 
+#                stem = TRUE, remove_punct = TRUE,
+#                remove = stopwords("english"))
+# presDfm <- dfm_trim(presDfm, min_count = 5, min_docfreq = 3)
+# # hierarchical clustering - get distances on normalized dfm
+# presDistMat <- textstat_dist(dfm_weight(presDfm, "relfreq"))
+# # hiarchical clustering the distance object
+# presCluster <- hclust(presDistMat)
+# # label with document names
+# presCluster$labels <- docnames(presDfm)
+# # plot as a dendrogram
+# plot(presCluster, xlab = "", sub = "", main = "Euclidean Distance on Normalized Token Frequency")
 
 #--------------------------------------------------------------------------------------------------
 ### Sentiment analysis with RSentiment / SentimentAnalysis
