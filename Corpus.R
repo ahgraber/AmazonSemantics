@@ -8,7 +8,8 @@ library(stringr)
 library(NLP)
 library(tm)
 library(RCurl)
-
+library(syuzhet)
+library(ggplot2)
 #readcsv
 amazon.df <- read.csv("D:/Coursework syllabus/quarter 1/MIS 612/Class project/Github/MIS612/Scraped Data/Amazon_firstcleaned.csv")
 amazon.df$comments <- as.character(amazon.df$comments)
@@ -19,6 +20,17 @@ textbag <- corpus(amazon.df$comments)
 #tokenizing
 mytok <- tokens(textbag ,remove_numbers = TRUE,  remove_punct = TRUE,remove_separators = TRUE)
 mytok <- gsub(pattern = "\\b[A-z]\\b{1}", replacement = " ",mytok) #replace flying letters
+
+#sentiment analysis
+mysentiment <- get_nrc_sentiment(mytok)
+sentimentscores <- data.frame(colSums(mysentiment[,]))
+names(sentimentscores) <- "score"
+sentimentscores <- cbind("sentiment" = rownames(sentimentscores),sentimentscores)
+rownames(sentimentscores) <- NULL
+ggplot(data = sentimentscores,aes(x= sentiment, y = score)) + 
+  geom_bar(aes(fill = sentiment), stat = "identity") +
+  theme(legend.position = "none") +
+  xlab("Sentiment") + ylab("score") + ggtitle ("Total sentiment score based on reviews")
 
 #remove stopwords
 mydata <- dfm(mytok, remove = stopwords("english"), stem = TRUE)
