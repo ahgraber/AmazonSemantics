@@ -95,7 +95,7 @@ c.data.df$Date <- as.Date(c.data.df$Date, format="%B%d,%Y")
 write.csv(c.data.df, file.path(paste(getwd(),"Scraped Data",sep = "/"),"c.data.csv"))
 
 #--------------------------------------------------------------------------------------------------
-### Create Training Set
+### Create Training Set, Testing Set
 
 # Initialize scripts
 source("readin.R")
@@ -108,13 +108,15 @@ c.data.df$Product <- as.factor(c.data.df$Product)
 c.data.df$Date <- as.Date(c.data.df$Date)
 
 # Randomly select 30 percent of the data and store it in a data frame
-training.df <- randomSample(c.data.df, 30)
+sample <- randomSample(c.data.df, 30)
+training.df <- as.data.frame(sample[1])
+testing.df <- as.data.frame(sample[2])
 
 # save training subset
 write.csv(training.df, file.path(paste(getwd(),"Scraped Data",sep = "/"),"training.csv"))
 
 #--------------------------------------------------------------------------------------------------
-### Training Data
+### Read in training set
 
 # Initialize scripts
 library(quanteda)
@@ -131,6 +133,27 @@ training.df$Product <- as.factor(training.df$Product)
 training.df$Date <- as.Date(training.df$Date)
 
 #-------------------------------------------------------------------------------------------------- 
+### Create corpora
+
+# creating corpus split at every space
+textbag <- corpus(training.df$Review)
+# add potentially relevant additional data back to corpus
+docvars(textbag, "Product") <- training.df$Product
+docvars(textbag, "Date") <- training.df$Date
+docvars(textbag, "Stars") <- training.df$Stars
+
+summary(textbag)
+
+# creating corpus split at every space with lemmas
+lembag <- corpus(lemmatize_strings(training.df$Review,dictionary = lexicon::hash_lemmas))
+# add potentially relevant additional data back to corpus
+docvars(lembag, "Product") <- training.df$Product
+docvars(lembag, "Date") <- training.df$Date
+docvars(lembag, "Stars") <- training.df$Stars
+
+summary(lembag)
+
+#-------------------------------------------------------------------------------------------------- 
 ### check for typos - currently not working.  output is no different from input
 
 # see fixTypos1.R and fixTypos2.R
@@ -144,26 +167,8 @@ training.df$Date <- as.Date(training.df$Date)
     # AND
   # the majority of the common misspellings we can probably accomodate via synonym identification
 
-#-------------------------------------------------------------------------------------------------- 
-### Create corpora
-
-# creating corpus split at every space
-textbag <- corpus(training.df$Review)
-  # add potentially relevant additional data back to corpus
-  docvars(textbag, "Product") <- training.df$Product
-  docvars(textbag, "Date") <- training.df$Date
-  docvars(textbag, "Stars") <- training.df$Stars
-
-  summary(textbag)
-
-# creating corpus split at every space with lemmas
-lembag <- corpus(lemmatize_strings(training.df$Review,dictionary = lexicon::hash_lemmas))
-  # add potentially relevant additional data back to corpus
-  docvars(lembag, "Product") <- training.df$Product
-  docvars(lembag, "Date") <- training.df$Date
-  docvars(lembag, "Stars") <- training.df$Stars
-
-  summary(lembag)
+# since typos as individual words are relatively infrequent, if we drop the infrequently-used words,
+# we should reduce the number of typos while also simplifying our dataset
 
 #-------------------------------------------------------------------------------------------------- 
 ### Stopword management
@@ -174,7 +179,7 @@ en.list <- readin("en_stop.txt", folder="Lists", infolder=T)
 stopwords.df <- as.data.frame(c(SMART.list, en.list))
   
 #-------------------------------------------------------------------------------------------------- 
-### Synonym management
+### Synonym management (grammantical)
   
 # see wordListMgmt.R 
   
@@ -214,6 +219,7 @@ docMatrixStar <- dfm(lembag, ## lembag vs textbag
 ### Themes & Topic models 
 
 # see:https://cran.r-project.org/web/packages/quanteda/vignettes/quickstart.html#corpus-management-tools 
+library(stm)
 
 ### Build dictionary for hypothesized themes
 # myDict <- dictionary(list(terror = c("terrorism", "terrorists", "threat"),

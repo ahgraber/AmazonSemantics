@@ -6,6 +6,8 @@ randomSample <- function(x, y) {
   
   # newdf has the restricted sample
   newdf <- df[booleans,]
+  testdf <- df[!booleans,]
+  
   
   # counters % of total
   rows <- nrow(df)
@@ -49,5 +51,5 @@ randomSample <- function(x, y) {
   checkdf <- data.frame(row.names = names, percents, deviations)
   print(checkdf)
   
-  return(newdf)
+  return(list(newdf,testdf))
 }

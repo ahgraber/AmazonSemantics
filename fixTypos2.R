@@ -10,10 +10,10 @@ fixTypos2 <- function() {
   devtools::install_github("GNUAspell/aspell")
   # devtools::install_github("ahgraber/tmt")  # updated from schaunwheeler/tmt
   library(quanteda)
-  library(Aspell)
+  #library(Aspell)
   library(tmt)  # note: masks "as.DocumentTermMatrix", "stopwords" from quanteda  
-  library(tidyr)
-  library(dplyr)
+  #library(tidyr)
+  #library(dplyr)
   
   ### NOTE: MUST INSTALL ASPELL SEPARATELY.  This is NOT an R package
   # On Windows, download aspell and dictionaries from http://aspell.net/win32/, and 
@@ -29,10 +29,10 @@ fixTypos2 <- function() {
   # Package manager
   if(!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman")
   pacman::p_load(quanteda)
-  pacman::p_load_gh(GNUAspell/aspell) # not available for R?  unsure how to manage dictionary then
+  #pacman::p_load_gh(GNUAspell/aspell) # not available for R?  unsure how to manage dictionary then
   pacman::p_load_gh(ahgraber/tmt)
-  pacman::p_load(tidyr)
-  pacman::p_load(dplyr)
+  #pacman::p_load(tidyr)
+  #pacman::p_load(dplyr)
 
   ### MANUAL REVIEW/FIX IS REQUIRED UNLESS WE CAN TWEAK THE DICTIONARY TO IMPROVE RELIABILITY
     # Based on review, we either need to improve dictionary to update for 2017-era internet 
