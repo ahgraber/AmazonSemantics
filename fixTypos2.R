@@ -4,9 +4,16 @@ fixTypos2 <- function() {
 # see: https://github.com/ahgraber/tmt/blob/master/README.md
   
   ### If using as script
+  # install.packages("quanteda")
   # install.packages("devtools")
+  install.packages("perl", "libtool", "gettext", "autoconf", "automake", "makeinfo")
+  devtools::install_github("GNUAspell/aspell")
   # devtools::install_github("ahgraber/tmt")  # updated from schaunwheeler/tmt
+  library(quanteda)
+  library(Aspell)
   library(tmt)  # note: masks "as.DocumentTermMatrix", "stopwords" from quanteda  
+  library(tidyr)
+  library(dplyr)
   
   ### NOTE: MUST INSTALL ASPELL SEPARATELY.  This is NOT an R package
   # On Windows, download aspell and dictionaries from http://aspell.net/win32/, and 
@@ -21,17 +28,51 @@ fixTypos2 <- function() {
   ### If calling as function
   # Package manager
   if(!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman")
+  pacman::p_load(quanteda)
+  pacman::p_load_gh(GNUAspell/aspell) # not available for R?  unsure how to manage dictionary then
   pacman::p_load_gh(ahgraber/tmt)
+  pacman::p_load(tidyr)
+  pacman::p_load(dplyr)
 
-  temp <- training.df$Review[1]
+  ### MANUAL REVIEW/FIX IS REQUIRED UNLESS WE CAN TWEAK THE DICTIONARY TO IMPROVE RELIABILITY
+    # Based on review, we either need to improve dictionary to update for 2017-era internet 
+    # terminology, or we can just continue without spelling fixes.  This will decrease reliability 
+    # a little bit (we'll miss spelling variants of "Spotify", etc) but getting reliable spelling 
+    # fixes is probably not worth the amount of time required to fix
   
-  aspellCheck(temp, 
-              output = "fix", 
-              sep = FALSE, 
-              cap.flag = "none", 
-              ignore=NULL, 
-              split.missing = TRUE)
+  # update dictionary: http://www.omegahat.net/Aspell/aspell.html
+  # create spelling object to update current session
+  sp = getSpeller()
+  
+  # add valid spellings to current session
+  addToList(c("omegahat", "SJava"), sp)
+  
+  # add corrections/recommended spelling
+  addCorrection(sp, duncn = "duncan",  ro = "rho", statistcs = "statistics")
+  
+  # gather data to be spellchecked
+  temp <- as.character(tokens(training.df$Review))
+  
+  eval <- aspellCheck(temp,
+                      output="eval",
+                      sep=FALSE,
+                      ignore=NULL,  ## could add valid words to ignore list (i.e., Spotify)
+                      split.missing = TRUE)
+  
+  fixed <- aspellCheck(temp,
+                       output = "fix", 
+                       sep = FALSE, 
+                       cap.flag = "none", 
+                       ignore=NULL, 
+                       split.missing = TRUE)
+   
+  
+  # compare fixed with temp (correct spellings are NA in 'fixed')
+  compareSpell <- cbind.data.frame(temp,eval,fixed)
+  write.csv(compareSpell, file.path(paste(getwd(),"Scraped Data",sep = "/"),"compareSpell.csv"))
+  
 
+  
 # AspellCheck() takes as input a single character string. 
 # The output has three modes:
   # * "eval" returns a logical vector indicating whether each word was found in the dictionary. 

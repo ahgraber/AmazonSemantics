@@ -35,6 +35,7 @@
 # # checking typo frequencies after dictionary applied
 # fixedTypos <- dfm_lookup(typos, typo.dict, exclusive = F,
 #                          valuetype = "regex")
+    ### would "tokens_replace() work instead of dfm_lookup()?
 # fixedTypos <- t(as.data.frame(fixedTypos))
 # 
 # library(hunspell)
