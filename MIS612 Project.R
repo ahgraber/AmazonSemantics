@@ -136,7 +136,13 @@ training.df$Date <- as.Date(training.df$Date)
 # see fixTypos1.R and fixTypos2.R
 
 # fixTypos2 is probably the best option at this point, but requires external program installation
-# see notes in fixTypos2.R for further information
+# see notes in fixTypos2.R for further information:
+  # Based on review, we either need to improve dictionary to update for 2017-era internet 
+  # terminology, or we can just continue without spelling fixes.  This will decrease reliability 
+  # a little bit (we'll miss spelling variants of "Spotify", etc) but getting reliable spelling 
+  # fixes is probably not worth the amount of time required to fix
+    # AND
+  # the majority of the common misspellings we can probably accomodate via synonym identification
 
 #-------------------------------------------------------------------------------------------------- 
 ### Create corpora
@@ -160,7 +166,7 @@ lembag <- corpus(lemmatize_strings(training.df$Review,dictionary = lexicon::hash
   summary(lembag)
 
 #-------------------------------------------------------------------------------------------------- 
-### Stopword management### Stopword management
+### Stopword management
   
 # see wordListMgmt.R
 SMART.list <- readin("SMART_stop.txt", folder="Lists", infolder=T)

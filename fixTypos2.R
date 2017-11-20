@@ -39,6 +39,8 @@ fixTypos2 <- function() {
     # terminology, or we can just continue without spelling fixes.  This will decrease reliability 
     # a little bit (we'll miss spelling variants of "Spotify", etc) but getting reliable spelling 
     # fixes is probably not worth the amount of time required to fix
+  # AND
+    # the majority of the common misspellings we can probably accomodate via synonym identification
   
   # update dictionary: http://www.omegahat.net/Aspell/aspell.html
   # create spelling object to update current session

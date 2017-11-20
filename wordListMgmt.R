@@ -39,7 +39,25 @@ dataPath <- paste(getwd(),"Lists",sep="/")
 ## Lemmas notes:
   
 ## Synonyms notes:
-  
+  typo.dict <- dictionary(list(awesome = "awsome",
+                               favorite = c("favourite", "favs", "fav"),
+                               "every time" = "everytime",
+                               recommend = c("reccomend","recomend"),
+                               commercials = "comercials",
+                               disappointed = "dissapointed",
+                               really = "realy",
+                               thanks = "thx",
+                               love = "luv",
+                               because = c("bc","cuz"),
+                               excellent = c("excelent","excelente"),
+                               their = "thier",
+                               minutes = "mins",
+                               lot = "alot",
+                               listen = "listen",
+                               pandora = "panadora",
+                               spotify = "spodify",
+                               doesnt = "dosent",
+                               soregex = "so*o"))
 #--------------------------------------------------------------------------------------------------
 ### Import edited lists
 
