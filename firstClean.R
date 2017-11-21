@@ -5,7 +5,7 @@ firstClean <- function(df) {
 
   # Package manager
   if(!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman")
-  pacman::p_load(textclean)
+  pacman::p_load(tidyverse, textclean)
   
 #--------------------------------------------------------------------------------------------------
   ### Aggregate list of cleaning functions 
@@ -48,29 +48,29 @@ firstClean <- function(df) {
   # Take data and run through cleaning process
   
   # textclean functions!!
-    df <- mapply(replace_contraction,as.data.frame(df))
-    df <- mapply(replace_symbol,as.data.frame(df))
-    #df <- mapply(replace_ordinal,as.data.frame(df))
-    #df <- mapply(replace_number,as.data.frame(df))
-    df <- mapply(replace_emoticon,as.data.frame(df))
-    #df <- mapply(replace_non_ascii,as.data.frame(df))
+    df <- mapply(replace_contraction,as_data_frame(df))
+    df <- mapply(replace_symbol,as_data_frame(df))
+    #df <- mapply(replace_ordinal,as_data_frame(df))
+    #df <- mapply(replace_number,as_data_frame(df))
+    df <- mapply(replace_emoticon,as_data_frame(df))
+    #df <- mapply(replace_non_ascii,as_data_frame(df))
   
   # Apply other cleaning functions to each column of the data frame
-    df <- mapply(trim, as.data.frame(df))
-    df <- mapply(nonewlines, as.data.frame(df))
-    #df <- mapply(nocommas, as.data.frame(df))
-    #df <- mapply(nodashes, as.data.frame(df))
-    #df <- mapply(noapostrophe, as.data.frame(df))
-    df <- mapply(noquotes, as.data.frame(df))
-    df <- mapply(nobrackets, as.data.frame(df))
-    #df <- mapply(nospecialchar, as.data.frame(df))
-    df <- mapply(nomultispace, as.data.frame(df))
-    #df <- mapply(tolower, as.data.frame(df))
+    df <- mapply(trim, as_data_frame(df))
+    df <- mapply(nonewlines, as_data_frame(df))
+    #df <- mapply(nocommas, as_data_frame(df))
+    #df <- mapply(nodashes, as_data_frame(df))
+    #df <- mapply(noapostrophe, as_data_frame(df))
+    df <- mapply(noquotes, as_data_frame(df))
+    df <- mapply(nobrackets, as_data_frame(df))
+    #df <- mapply(nospecialchar, as_data_frame(df))
+    df <- mapply(nomultispace, as_data_frame(df))
+    #df <- mapply(tolower, as_data_frame(df))
     
 
     # check text post-clean - NOTE: TIME INTENSIVE, USE WITH SMALL DATA
     # check_text(df)
     
-    return(as.data.frame(df))
+    return(as_data_frame(df))
 }
 

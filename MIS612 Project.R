@@ -64,29 +64,29 @@ source("scrapeAmazon.R")
 #--------------------------------------------------------------------------------------------------
 ### Raw Data Cleaning
 
+library(tidyverse)
+
 # Initialize scripts
 source("readin.R")
 source("firstClean.R")
 
 # Import data w/ appropriate col typing
-data.df <- readin(filename="data.csv", folder="Scraped Data", infolder=TRUE)
+data.df <- readin(filename="data.csv", subfolder="Scraped Data", infolder=TRUE)
 
 # create data frame of stuff not-to-clean (dates, stars, etc)
-preserve.df <- cbind.data.frame(data.df$prod, data.df$date, data.df$stars,  ## NOTE: DROPS AUTHOR!!!
-                                stringsAsFactors=FALSE)  
-
+preserve.df <- as_data_frame(cbind(data.df$prod, data.df$date, data.df$stars))  ## NOTE: DROPS AUTHOR!!!
 colnames(preserve.df) <- c('Product', 'Date', 'Stars')
 preserve.df$Product <- as.factor(preserve.df$Product)
 preserve.df$Date <- as.Date(preserve.df$Date, format="%B%d,%Y")
 
 # create data frame of just review to be cleaned
-toclean.df <- as.data.frame(paste(data.df$title," ",data.df$comments))
+toclean.df <- as_data_frame(paste(data.df$title," ",data.df$comments))
 
 # clean reviews and app
 cleaned.df <- firstClean(toclean.df)
 
 # combine reviews and formatted other stuff
-c.data.df <- cbind(preserve.df,cleaned.df)
+c.data.df <- bind_cols(preserve.df,cleaned.df)
 colnames(c.data.df) <- c('Product', 'Date', 'Stars','Review')
 c.data.df$Product <- as.factor(c.data.df$Product)
 c.data.df$Date <- as.Date(c.data.df$Date, format="%B%d,%Y")
@@ -97,28 +97,35 @@ write.csv(c.data.df, file.path(paste(getwd(),"Scraped Data",sep = "/"),"c.data.c
 #--------------------------------------------------------------------------------------------------
 ### Create Training Set, Testing Set
 
+library(tidyverse)
+library(reshape2)
+
 # Initialize scripts
 source("readin.R")
 source("randomSample.R")
 
 # Import data w/ appropriate col typing
-c.data.df <- readin(filename="c.data.csv", folder="Scraped Data", infolder=TRUE)
-colnames(c.data.df) <- c('Product', 'Date', 'Stars','Review')
+c.data.df <- readin(filename="c.data.csv", subfolder="Scraped Data", infolder=TRUE)
+colnames(c.data.df) <- c('Index','Product', 'Date', 'Stars','Review')
 c.data.df$Product <- as.factor(c.data.df$Product)
 c.data.df$Date <- as.Date(c.data.df$Date)
 
 # Randomly select 30 percent of the data and store it in a data frame
-sample <- randomSample(c.data.df, 30)
-training.df <- as.data.frame(sample[1])
-testing.df <- as.data.frame(sample[2])
+booleans <- data_frame(randomSample(c.data.df, 30))
+colnames(booleans) <- 'booleans'
+sample <- bind_cols(c.data.df,booleans)
+train.df <- filter(sample, sample$booleans)
+test.df <- filter(sample, !sample$booleans)
 
 # save training subset
-write.csv(training.df, file.path(paste(getwd(),"Scraped Data",sep = "/"),"training.csv"))
+write.csv(train.df, file.path(paste(getwd(),"Scraped Data",sep = "/"),"train.csv"))
+write.csv(test.df, file.path(paste(getwd(),"Scraped Data",sep = "/"),"test.csv"))
 
 #--------------------------------------------------------------------------------------------------
 ### Read in training set
 
 # Initialize scripts
+library(tidyverse)
 library(quanteda)
 library(textstem)
 
@@ -127,29 +134,30 @@ library(textstem)
 source("readin.R")
 
 # Import data w/ appropriate col typing
-training.df <- readin(filename="training.csv", folder="Scraped Data", infolder=TRUE)
-colnames(training.df) <- c('Product', 'Date', 'Stars','Review')
-training.df$Product <- as.factor(training.df$Product)
-training.df$Date <- as.Date(training.df$Date)
+train.df <- readin(filename="train.csv", subfolder="Scraped Data", infolder=TRUE)
+train.df[1]<-NULL
+colnames(train.df) <- c('Index','Product', 'Date', 'Stars','Review')
+train.df$Product <- as.factor(train.df$Product)
+train.df$Date <- as.Date(train.df$Date)
 
 #-------------------------------------------------------------------------------------------------- 
 ### Create corpora
 
 # creating corpus split at every space
-textbag <- corpus(training.df$Review)
+textbag <- corpus(train.df$Review)
 # add potentially relevant additional data back to corpus
-docvars(textbag, "Product") <- training.df$Product
-docvars(textbag, "Date") <- training.df$Date
-docvars(textbag, "Stars") <- training.df$Stars
+docvars(textbag, "Product") <- train.df$Product
+docvars(textbag, "Date") <- train.df$Date
+docvars(textbag, "Stars") <- train.df$Stars
 
 summary(textbag)
 
 # creating corpus split at every space with lemmas
-lembag <- corpus(lemmatize_strings(training.df$Review,dictionary = lexicon::hash_lemmas))
+lembag <- corpus(lemmatize_strings(train.df$Review,dictionary = lexicon::hash_lemmas))
 # add potentially relevant additional data back to corpus
-docvars(lembag, "Product") <- training.df$Product
-docvars(lembag, "Date") <- training.df$Date
-docvars(lembag, "Stars") <- training.df$Stars
+docvars(lembag, "Product") <- train.df$Product
+docvars(lembag, "Date") <- train.df$Date
+docvars(lembag, "Stars") <- train.df$Stars
 
 summary(lembag)
 
@@ -174,8 +182,8 @@ summary(lembag)
 ### Stopword management
   
 # see wordListMgmt.R
-SMART.list <- readin("SMART_stop.txt", folder="Lists", infolder=T)
-en.list <- readin("en_stop.txt", folder="Lists", infolder=T)
+SMART.list <- readin("SMART_stop.txt", subfolder="Lists", infolder=T)
+en.list <- readin("en_stop.txt", subfolder="Lists", infolder=T)
 stopwords.df <- as.data.frame(c(SMART.list, en.list))
   
 #-------------------------------------------------------------------------------------------------- 
