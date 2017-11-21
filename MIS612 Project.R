@@ -114,6 +114,7 @@ testing.df <- as.data.frame(sample[2])
 
 # save training subset
 write.csv(training.df, file.path(paste(getwd(),"Scraped Data",sep = "/"),"training.csv"))
+write.csv(testing.df, file.path(paste(getwd(),"Scraped Data",sep = "/"),"testing.csv"))
 
 #--------------------------------------------------------------------------------------------------
 ### Read in training set

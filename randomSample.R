@@ -3,11 +3,8 @@ randomSample <- function(x, y) {
   
   # vector of booleans to pick which rows to keep in the new data frame
   booleans <- sample(1:10, nrow(df), replace = T)<=y/10
-  
   # newdf has the restricted sample
   newdf <- df[booleans,]
-  testdf <- df[!booleans,]
-  
   
   # counters % of total
   rows <- nrow(df)
@@ -51,5 +48,5 @@ randomSample <- function(x, y) {
   checkdf <- data.frame(row.names = names, percents, deviations)
   print(checkdf)
   
-  return(list(newdf,testdf))
+  return(list(newdf, df[!booleans,]))
 }
