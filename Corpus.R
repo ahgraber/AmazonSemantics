@@ -1,4 +1,3 @@
-
 #CORPUS
 
 #install.package("quanteda")
@@ -36,13 +35,18 @@ ggplot(data = sentimentscores,aes(x= sentiment, y = score)) +
 #remove stopwords
 mydata <- dfm(mytok, remove = stopwords("english"), stem = TRUE)
 mydata <- dfm(mydata, remove = c("amazon","app","music")) #remove other common words
-
+sampledata <- dfm(mydata)
 #Top features in the textbag
 topfeatures(mydata,20) #frequency of top 20 words
+sampledata <- dfm_trim(mydata, min_count = 100,min_docfreq = 100)
+write.csv(textstat_frequency(sampledata), file = "frequency.csv") 
+lowfreq <- textstat_frequency(mydata)
+
+write.csv(textstat_frequency(mydata), file = "frequency2.csv")
 
 #get positive and negative words
-poswords <- scan("D:/Coursework syllabus/quarter 1/MIS 612/Class project/Github/MIS612/poswords.txt", what = 'character', comment.char = ';') #edit to pref
-negwords <- scan("D:/Coursework syllabus/quarter 1/MIS 612/Class project/Github/MIS612/negwords.txt", what = 'character', comment.char = ';') #edit to pref
+poswords <- scan("D:/Coursework syllabus/quarter 1/MIS 612/poswords.txt", what = 'character', comment.char = ';') #edit to pref
+negwords <- scan("D:/Coursework syllabus/quarter 1/MIS 612/negwords.txt", what = 'character', comment.char = ';') #edit to pref
 
 #get number of positive words for each review
 pscore <- unlist(lapply(mytok,function(x){
