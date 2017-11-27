@@ -2,22 +2,23 @@
 
 # wordListMgmt 
 
+  # Package manager
+  if(!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman")
+  pacman::p_load(tidyverse, tidytext)
+  
 #--------------------------------------------------------------------------------------------------
-
-source(readin.R)
+library(tidyverse)
+library(tidytext)
+library(quanteda)
+source("readin.R")
 dataPath <- paste(getwd(),"Lists",sep="/")
 
 #--------------------------------------------------------------------------------------------------
 ### Save list(s) for review/revision
 
-## Stopwords
-  # save SMART stopword list for editing
-  SMART.list <- as.data.frame(data_char_stopwords$SMART)
-  write.table(SMART.list, file = paste(dataPath, "SMART_stop.txt", sep = "/"))
-  
-  # save english stopword list for editing
-  en.list <- as.data.frame(data_char_stopwords$english)
-  write.table(SMART.list, file = paste(dataPath, "en_stop.txt", sep = "/"))
+## Export standard stopwords list for external editing
+  spwords <- tidytext::stop_words
+  write.csv(spwords, file = paste(dataPath, "stopwords.txt", sep = "/"), row.names = F)
 
 ## Lemmas
   # save lemma list for editing (from http://www.lexiconista.com/Datasets/lemmatization-en.zip)
@@ -30,44 +31,70 @@ dataPath <- paste(getwd(),"Lists",sep="/")
   
 ## Synonyms
 
-
+## Sentiments
+  
+  # get sentiments 
+  bing <- get_sentiments("bing")  # positive/negative
+  write.csv(bing, file = paste(dataPath, "bing_sentiment.txt", sep = "/"), row.names = F)
+  nrc <- get_sentiments("nrc")    # with emotion
+  write.csv(nrc, file = paste(dataPath, "nrc_sentiment.txt", sep = "/"), row.names = F)
+  afinn <- get_sentiments("afinn")    # with emotion
+  write.csv(afinn, file = paste(dataPath, "afinn_sentiment.txt", sep = "/"), row.names = F)
+  
 #--------------------------------------------------------------------------------------------------
 ### Manually edit lists
 
 ## Stopwords notes:
+  spwords <- readin("stopwords.txt", subfolder="Lists",infolder=T)
+  
+
+  # remove words from stop words list
+  custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "not"))
+      # keep "not"; look for ngrams involving "not"
+  
+  # add words to stop words list
+  custom_spwords <- bind_rows(data_frame(word = c("nd", "ð", "absolutely"), 
+                                         lexicon = "custom"), 
+                              custom_spwords)
+
+
+  # save custom list
+  write.csv(custom_spwords, file = paste(dataPath, "custom_spwords.txt", sep = "/"), row.names = F)
   
 ## Lemmas notes:
   
-## Synonyms notes:
-  typo.dict <- dictionary(list(awesome = "awsome",
-                               favorite = c("favourite", "favs", "fav"),
-                               "every time" = "everytime",
-                               recommend = c("reccomend","recomend"),
-                               commercials = "comercials",
-                               disappointed = "dissapointed",
-                               really = "realy",
-                               thanks = "thx",
-                               love = "luv",
-                               because = c("bc","cuz"),
-                               excellent = c("excelent","excelente"),
-                               their = "thier",
-                               minutes = "mins",
-                               lot = "alot",
-                               listen = "listen",
-                               pandora = "panadora",
-                               spotify = "spodify",
-                               doesnt = "dosent",
-                               soregex = "so*o"))
+  
+## replace synonyms notes:
+  ## as proven by current typo correction, this does not work currently
+  # synonym <- c("awsome", "favourite", "favs", "fav", "reccomend", 
+  #           "recomend", "comercials", "dissapointed", "realy", "thx", 
+  #           "luv", "bc", "cuz", "excelent", "excelente",
+  #           "thier", "mins", "alot", "lil", "panadora", 
+  #           "spodify", "dosent", "ive", "Ive", "everytime" )
+  # replacement <- c("awesome", "favorite", "favorite", "favorite", "recommend",
+  #                  "recommend", "commercials", "disappointed", "really", "thanks",
+  #                  "love", "because", "because", "excellent", "excellent",
+  #                  "their", "minutes", "a lot", "little", "pandora",
+  #                  "spotify", "does not", "I have", "I have", "every time")
+  # 
+  # so_regex = "/bso*o/b"
+  # uh_regex = "/buh*h/b"
 #--------------------------------------------------------------------------------------------------
 ### Import edited lists
 
 ## Stopwords
-  SMART.list <- readin("SMART_stop.txt", folder="Lists", infolder=T)
-  en.list <- readin("en_stop.txt", folder="Lists", infolder=T)
-  stopwords.df <- as.data.frame(c(SMART.list, en.list))
+  spwords <- readin("stopwords.txt",folder="Lists",infolder=T)
+  custom_spwords <- readin("custom_spwords.txt",folder="Lists",infolder=T)
+ 
 
 ## Lemmas
   lemma.list <- readin("lemmas.txt", folder="Lists", infolder=T)
     
 ## Synonyms
+  
+  
+## Sentiments
+  bing <- readin("bing_sentiment.txt", folder="Lists", infolder=T)
+  nrc <- readin("nrc_sentiment.txt", folder="Lists", infolder=T)
+  afinn <- readin("afinn_sentiment.txt", folder="Lists", infolder=T)
   

@@ -51,7 +51,7 @@ firstClean <- function(df) {
     df <- mapply(replace_contraction,as_data_frame(df))
     df <- mapply(replace_symbol,as_data_frame(df))
     #df <- mapply(replace_ordinal,as_data_frame(df))
-    #df <- mapply(replace_number,as_data_frame(df))
+    df <- mapply(replace_number,as_data_frame(df))
     df <- mapply(replace_emoticon,as_data_frame(df))
     #df <- mapply(replace_non_ascii,as_data_frame(df))
   

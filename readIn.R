@@ -17,7 +17,7 @@ readin <- function(filename, subfolder="", infolder=FALSE) {
     
   }
   
-  df <- distinct(read_csv(file.path(dataPath,filename)))
+  df <- read_csv(file.path(dataPath,filename))
   return(df)
 }
 
