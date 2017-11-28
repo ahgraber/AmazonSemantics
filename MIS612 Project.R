@@ -246,6 +246,19 @@ train_lem %>%
   count(word, sort = TRUE) %>%
   ungroup()
 
+# look at infrequently used terms per product
+infreqterms <- train_lem %>%
+  count(word, sort = TRUE) %>%
+  filter(n<10) %>%
+  ungroup()
+
+infreq <- train_lem %>%
+  anti_join(infreqterms)
+
+infreq %>%
+  count(word, sort = TRUE) %>%
+  filter(n>10)
+
 # plot frequently used words
 train_lem %>%
   count(word, sort = TRUE) %>%
@@ -478,8 +491,12 @@ docMatrixStar <- dfm(lemma_corpus, ## lembag vs textbag
 
 #--------------------------------------------------------------------------------------------------
 
+
+
 ### Themes & Topic models with TM
-library(topicmodels)
+source("topicgraph.R")
+topicnumber = 4           #edit this for number of topicmodels/topic graphs
+topicgraph(train_lem,topicnumber)
 
 # create td-idf by review index
 train_lem3 <- train_lem %>%
