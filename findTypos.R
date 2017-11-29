@@ -13,7 +13,7 @@ if(!exists("firstClean.R", mode="function")) source("firstClean.R")
 
 #--------------------------------------------------------------------------------------------------
 
-text <- mapply(replace_contraction, toclean_df)
+text <- mapply(replace_contraction, x)
 typolist <- hunspell(text)
 typolist <- as_data_frame(unlist(typolist, recursive=T)) %>%
   count(value, sort = T) 

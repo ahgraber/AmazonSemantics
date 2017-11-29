@@ -1,7 +1,7 @@
 ### Functions and transformation for initial clean
 
 #--------------------------------------------------------------------------------------------------
-firstClean <- function(df) {
+firstClean <- function(chr) {
 
   # Package manager
   if(!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman")
@@ -19,7 +19,8 @@ firstClean <- function(df) {
   nonewlines <- function(x) gsub("[\r\n]", " ", x)
   
   # Replaces commas, periods, exclamations with space
-  nocommas <- function(x) gsub("[,.!]", " ", x)
+  nocommas <- function(x) gsub("[,]", " ", x)
+  nopunct <- function(x) gsub("[,.!]", " ", x)
   
   # Replaces dashes with a space
   nodashes <- function(x) gsub("[-]", " ", x)
@@ -34,6 +35,9 @@ firstClean <- function(df) {
   # Replaces other punctionation @#$%^&* with a space
   nospecialchar <- function(x) gsub("[@#$%^&*]", " ", x)
   
+  # Remove unicode other/symbol (i.e., emoji)
+  nosymbol <- function(x) gsub('\\p{So}|\\p{Cn}', '', x, perl = TRUE)
+  
   # Remove multiple spaces in strings
   nomultispace <- function(x) gsub("\\s+", " ", x)
   
@@ -45,32 +49,33 @@ firstClean <- function(df) {
   # report potential issues pre-clean - NOTE: TIME INTENSIVE, USE WITH SMALL DATA
   # check_text(df)
   
-  # Take data and run through cleaning process
-  
-  # textclean functions!!
-    df <- mapply(replace_contraction,as_data_frame(df))
-    df <- mapply(replace_symbol,as_data_frame(df))
-    #df <- mapply(replace_ordinal,as_data_frame(df))
-    df <- mapply(replace_number,as_data_frame(df))
-    df <- mapply(replace_emoticon,as_data_frame(df))
-    #df <- mapply(replace_non_ascii,as_data_frame(df))
-  
-  # Apply other cleaning functions to each column of the data frame
-    df <- mapply(trim, as_data_frame(df))
-    df <- mapply(nonewlines, as_data_frame(df))
-    #df <- mapply(nocommas, as_data_frame(df))
-    #df <- mapply(nodashes, as_data_frame(df))
-    #df <- mapply(noapostrophe, as_data_frame(df))
-    df <- mapply(noquotes, as_data_frame(df))
-    df <- mapply(nobrackets, as_data_frame(df))
-    #df <- mapply(nospecialchar, as_data_frame(df))
-    df <- mapply(nomultispace, as_data_frame(df))
-    #df <- mapply(tolower, as_data_frame(df))
+  chr1 <- chr %>%
+    trim() %>%
+    nonewlines() %>%
+    nocommas() %>%
+    nodashes() %>%
+    nomultispace()
+
+  # textclean functions
+  chr2 <- chr1 %>%
+    replace_contraction() %>%
+    replace_non_ascii() %>%
+    replace_symbol() %>%
+    replace_emoticon() %>%
+    replace_ordinal() 
+    # replace_number() %>%
+
+    # number, ordinal, (non-ascii?) may cause problems
     
+  chr3 <- chr2 %>%
+    noquotes() %>%
+    nobrackets() %>%
+    nospecialchar() %>%
+    nomultispace()
 
     # check text post-clean - NOTE: TIME INTENSIVE, USE WITH SMALL DATA
-    # check_text(df)
+    # check_text(cleaned3)
     
-    return(as_data_frame(df))
+    return(chr3)
 }
 
