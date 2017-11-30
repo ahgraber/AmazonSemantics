@@ -1,16 +1,19 @@
 
 
-topicgraph <- function(train_lem,k){
+topicgraph <- function(tbl_df, k){
   
-  library(topicmodels)
+  # Package manager
+  if(!"pacman" %in% installed.packages()[,"Package"]) install.packages("pacman")
+  pacman::p_load(tidyverse, tidytext, topicmodels)
+
   # create td-idf by review index
-  train_lem3 <- train_lem %>%
+  tbl_df2 <- tbl_df %>%
     count(Index, word) %>%
     bind_tf_idf(word, Index, n) %>%
     arrange(desc(tf_idf))
   
   # cast into dtm for topic model
-  train_dtm <- cast_dtm(train_lem3, Index, word, n)
+  train_dtm <- cast_dtm(tbl_df2, Index, word, n)
   
   # set a seed so that the output of the model is predictable
   total_lda <- LDA(train_dtm, k = k, control = list(seed = 1234))
@@ -23,7 +26,7 @@ topicgraph <- function(train_lem,k){
   # find top 10 terms
   total_top_terms <- total_topics %>%
     group_by(topic) %>%
-    top_n(10, beta) %>%
+    top_n(20, beta) %>%
     ungroup() %>%
     arrange(topic, -beta)
   

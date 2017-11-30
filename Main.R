@@ -144,7 +144,7 @@ rm(sample)
 rm(randomSample)
 rm(test_df)
 #--------------------------------------------------------------------------------------------------
-### Read in training set
+### Clean training set
 
 library(tidyverse)
 library(textclean)
@@ -266,27 +266,28 @@ train_lem$Date <- as.Date(train_lem$Date)
 
 # replace column of reviews with tidy column of tokens
 train_td <- train_lem %>%
-  unnest_tokens(word, Review)
+  unnest_tokens(token, Review) %>%
+  filter(!is.na(token))
 
 # remove stop words
 ## edit stop words as necessary
 train_td <- train_td %>%
-  filter(!word %in% custom_spwords$word)
+  filter(!token %in% custom_spwords$word)
 
 # look at frequently used terms per product
 train_td %>%
   group_by(Product) %>%
-  count(word, sort = TRUE) %>%
+  count(token, sort = TRUE) %>%
   ungroup()
 
 # find location of bottom x%
-frequency <- cbind(count(train_td, word, sort=T))
+frequency <- cbind(count(train_td, token, sort=T))
 quantile(frequency$n, .80)
   ## words with <= 5 uses account for the lower 80% of our data
 
 # look at infrequently used terms per product
 infreqterms <- train_td %>%
-  count(word, sort = TRUE) %>%
+  count(token, sort = TRUE) %>%
   filter(n<5) %>%
   ungroup()
 
@@ -296,18 +297,18 @@ train_td <- anti_join(train_td, infreqterms)
 ### exploration ###
 # plot frequently used words
 train_td %>%
-  count(word, sort = TRUE) %>%
+  count(token, sort = TRUE) %>%
   filter(n > 600) %>%
-  mutate(word = reorder(word, n)) %>%
-  ggplot(aes(word, n)) +
+  mutate(token = reorder(token, n)) %>%
+  ggplot(aes(token, n)) +
   geom_col() +
   xlab(NULL) +
   coord_flip()
-  
+
 # compare frequent words for different apps
 frequency <- train_td %>%
-  mutate(word = str_extract(word, "[a-z']+")) %>%   # redundant if tokens well-cleaned
-  count(Product, word) %>%
+  mutate(token = str_extract(token, "[a-z']+")) %>%   # redundant if tokens well-cleaned
+  count(Product, token) %>%
   group_by(Product) %>%
   mutate(proportion = n / sum(n)) %>% 
   select(-n) %>% 
@@ -331,26 +332,57 @@ rm(infreqterms)
 rm(frequency)
 
 #-------------------------------------------------------------------------------------------------- 
-### Identify relationship between word and star rating
+### n-grams
+
+source("bigrams.R")
+source("trigrams.R")
+source("tetragrams.R")
+bigrams <- bigrams(train_lem)
+trigrams <- trigrams(train_lem)
+tetragrams <- tetragrams(train_lem)
+
+# add frequency to train_td
+monograms <- train_td %>%
+  add_count(token)
+
+# join monogram, bigram, trigram, tetragram(?)
+big_td <- rbind(monograms,bigrams,trigrams,tetragrams)
+
+
+#-------------------------------------------------------------------------------------------------- 
+### Identify relationship between token and star rating
 
 # create column with average star rating by word
-word_stars <- train_td %>%
-  select(word, Stars) %>%
-  group_by(word) %>%
+token_Stars <- big_td %>%
+  select(token, Stars) %>%
+  group_by(token) %>%
   mutate(frequency = n()) %>%
   mutate(avg_rating = mean(Stars)) %>%
   mutate(avg_stdev = sd(Stars))
 
-ggplot(word_stars, aes(avg_rating)) + geom_histogram()
-ggplot(word_stars, aes(avg_stdev)) + geom_histogram()
+# quick look at distributions
+ggplot(token_Stars, aes(avg_rating)) + geom_histogram()
+ggplot(token_Stars, aes(avg_stdev)) + geom_histogram()
 
 # filter out words with a standard deviation of ratings greater than one but not 0
-word_stars <- word_stars %>%
+token_Stars <- token_Stars %>%
+  select(-Stars) %>%
   filter(avg_stdev < 1) %>%
-  filter(avg_stdev > 0)
+  filter(avg_stdev > 0) %>%
+  ungroup() 
+
+# remove duplicates
+token_Stars <- token_Stars %>%
+  mutate(dups = duplicated(token_Stars)) %>%
+  filter(dups == FALSE) %>%
+  select(-dups)
+
+# review distributions
+ggplot(token_Stars, aes(avg_rating)) + geom_histogram()
+ggplot(token_Stars, aes(avg_stdev)) + geom_histogram()
 
 # save word x star data
-write.csv(word_stars, file.path(paste(getwd(),"Lists",sep = "/"),"word_stars.csv"))
+write.csv(token_Stars, file.path(paste(getwd(),"Lists",sep = "/"),"token_Stars.csv"))
 
 
 #-------------------------------------------------------------------------------------------------- 
@@ -359,58 +391,82 @@ write.csv(word_stars, file.path(paste(getwd(),"Lists",sep = "/"),"word_stars.csv
 library(tidyverse)
 library(tidytext)
 
-# identify # times word used per App (term-freq)
-count_word <- train_td %>%
-  count(Product, word, sort = TRUE) %>%
+# identify # times word used per App (n / appFreq)
+tokens <- train_td %>%
+  count(Product, token, sort = TRUE) %>%
   ungroup()
 
-# identify total # words used per App (for inverse-doc freq)
-total_words <- count_word %>% 
+# identify total # words used per App (totalFreq)
+total_tokens <- tokens %>% 
   group_by(Product) %>% 
   summarize(totalFreq = sum(n)) %>%
   ungroup()
 
 # create data table with product, word, n, total words
-count_word <- left_join(count_word, total_words)
+tokens <- left_join(tokens, total_tokens)
 # append to train_lem
-train_td2 <- left_join(train_td, count_word)
+train_td2 <- left_join(train_td, tokens)
 colnames(train_td2) <- c("Index", "Product","Date","Stars","word","appFreq","totalFreq")
 
-ggplot(train_td2, aes(n/total, fill = Product)) +
+# plot term frequency (appFreq/totalFreq) --> we don't have the standard long tail!
+ggplot(train_td2, aes(appFreq/totalFreq, fill = Product)) +
   geom_histogram(show.legend = FALSE) +
   facet_wrap(~Product, ncol = 2, scales = "free_y")
 
-# create tf-idf
-count_word <- count_word %>%
-  bind_tf_idf(word, Product, n)
+# Zipf’s law: the frequency that a word appears is inversely proportional to its rank.
+freq_by_rank <- tokens %>% 
+  group_by(Product) %>% 
+  mutate(rank = row_number(), `term frequency` = appFreq/totalFreq)
 
-# look at highest tf-idf (meaning infrequently used)
-# theoretically, this means that they are important - but for us, 
-# it seems like most are single-use gibberish or one-off typos
-  # *** should consider these for dropping ***
-# find a tf-idf value where the tf =/= 1 and drop super-high tf-idf terms.
-count_word %>%
-  select(-total) %>%
+freq_by_rank
+
+# plot rank / Product
+freq_by_rank %>% 
+  ggplot(aes(rank, `term frequency`, color = Product)) + 
+  geom_line(size = 1.2, alpha = 0.8) + 
+  scale_x_log10() +
+  scale_y_log10()
+
+# this looks pretty consistent between products (especially between rank 10 and 500(?))
+rank_subset <- freq_by_rank %>% 
+  filter(rank < 500,
+         rank > 10)
+
+lm(log10(`term frequency`) ~ log10(rank), data = rank_subset) # linear model for central subset
+
+freq_by_rank %>% 
+  ggplot(aes(rank, `term frequency`, color = Product)) + 
+  geom_abline(intercept = -0.7754, slope = -1.0323, color = "gray50", linetype = 2) +
+  geom_line(size = 1.2, alpha = 0.8) + 
+  scale_x_log10() +
+  scale_y_log10()
+
+# create tf-idf
+tokens <- tokens %>%
+  bind_tf_idf(token, Product, n)
+  # Term Freq: (# times term appears in a document) / (Total number of terms in the document)
+  # Inverse Doc Freq: log_e(Total number of documents / Number of documents with term t in it)
+    # IDF is 0 for terms that appear in many documents
+  # tf_idf: weight; calculated by tf * idf
+
+# look at highest tf-idf
+# theoretically, this means that they are important
+tokens %>%
+  select(-totalFreq) %>%
   arrange(desc(tf_idf))
 
 # look at lowest tf-idf (meaning they appear frequently in reviews)
 # *** also consider these for dropping ***
-count_word %>%
-  select(-total) %>%
+tokens %>%
+  select(-totalFreq) %>%
   arrange(tf_idf)
 
 # based on this, what should we add to stopwords?
 
-rm(count_word)
-rm(total_words)
-rm(train_td2)
-
-#-------------------------------------------------------------------------------------------------- 
-### n-grams
-
-# see bigrams.R
-# see trigrams.R
-# see tetragrams.R
+rm(tokens)
+rm(total_tokens)
+rm(freq_by_rank)
+rm(rank_subset)
 
 #--------------------------------------------------------------------------------------------------
 ### Sentiment analysis with tidytext
@@ -556,8 +612,8 @@ docMatrixStar <- dfm(lemma_corpus, ## lembag vs textbag
 
 ### Themes & Topic models with TM
 source("topicgraph.R")
-topicnumber = 4           #edit this for number of topicmodels/topic graphs
-topicgraph(train_lem,topicnumber)
+topicnumber = 9          #edit this for number of topicmodels/topic graphs
+topicgraph(train_td, topicnumber)
 
 # create td-idf by review index
 train_td3 <- train_td %>%
