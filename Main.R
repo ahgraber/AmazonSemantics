@@ -354,7 +354,7 @@ big_td <- rbind(monograms,bigrams,trigrams,tetragrams)
 
 # create column with average star rating by word
 token_Stars <- big_td %>%
-  select(token, Stars) %>%
+  select(token, Product, Stars) %>%
   group_by(token) %>%
   mutate(frequency = n()) %>%
   mutate(avg_rating = mean(Stars)) %>%
@@ -368,8 +368,11 @@ ggplot(token_Stars, aes(avg_stdev)) + geom_histogram()
 token_Stars <- token_Stars %>%
   select(-Stars) %>%
   filter(avg_stdev < 1) %>%
-  filter(avg_stdev > 0) %>%
-  ungroup() 
+  filter(avg_stdev > 0)
+
+token_Stars <- token_Stars %>%
+  bind_tf_idf(token, Product, frequency) %>%
+  ungroup()
 
 # remove duplicates
 token_Stars <- token_Stars %>%
@@ -380,6 +383,8 @@ token_Stars <- token_Stars %>%
 # review distributions
 ggplot(token_Stars, aes(avg_rating)) + geom_histogram()
 ggplot(token_Stars, aes(avg_stdev)) + geom_histogram()
+
+
 
 # save word x star data
 write.csv(token_Stars, file.path(paste(getwd(),"Lists",sep = "/"),"token_Stars.csv"))
