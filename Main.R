@@ -180,10 +180,7 @@ typolist2 <- findTypos(cleaned2)
 # lemmatize
 cleaned3 <- lemmatize_strings(cleaned2, dictionary = lexicon::hash_lemmas)
 
-# remove once typo replacement is fixed
-train_df$Review <- cleaned2
-colnames(train_df) <- c('Index','Product', 'Date', 'Stars','Review')
-
+# use the cleaned, lemmatized data
 train_lem$Review <- cleaned3
 colnames(train_lem) <- c('Index','Product', 'Date', 'Stars','Review')
 
@@ -207,6 +204,7 @@ rm(fixTypos)
 
 library(tidyverse)
 library(quanteda)
+library(textstem)
 source("readin.R")
 
 # Import data w/ appropriate col typing
@@ -282,13 +280,13 @@ train_td %>%
 
 # find location of bottom x%
 frequency <- cbind(count(train_td, token, sort=T))
-quantile(frequency$n, .80)
+q <- quantile(frequency$n, .80)
   ## words with <= 5 uses account for the lower 80% of our data
 
 # look at infrequently used terms per product
 infreqterms <- train_td %>%
   count(token, sort = TRUE) %>%
-  filter(n<5) %>%
+  filter(n < q) %>%
   ungroup()
 
 # remove infrequent terms
@@ -334,20 +332,25 @@ rm(frequency)
 #-------------------------------------------------------------------------------------------------- 
 ### n-grams
 
+source("monograms.R")
 source("bigrams.R")
 source("trigrams.R")
 source("tetragrams.R")
+monograms <- monograms(train_lem)
 bigrams <- bigrams(train_lem)
 trigrams <- trigrams(train_lem)
 tetragrams <- tetragrams(train_lem)
 
-# add frequency to train_td
-monograms <- train_td %>%
-  add_count(token)
-
 # join monogram, bigram, trigram, tetragram(?)
 big_td <- rbind(monograms,bigrams,trigrams,tetragrams)
 
+# save big_td
+write.csv(big_td, file.path(paste(getwd(),"Lists",sep = "/"),"big_td.csv"), row.names=F)
+
+rm(monograms)
+rm(bigrams)
+rm(trigrams)
+rm(tetragrams)
 
 #-------------------------------------------------------------------------------------------------- 
 ### Identify relationship between token and star rating
@@ -358,93 +361,35 @@ token_Stars <- tokenValues(big_td, "Index")
 # review distributions
 ggplot(token_Stars, aes(avg_rating)) + geom_histogram()
 ggplot(token_Stars, aes(avg_stdev)) + geom_histogram()
+ggplot(token_Stars, aes(tf)) + geom_histogram()
+ggplot(token_Stars, aes(idf)) + geom_histogram()
+ggplot(token_Stars, aes(tf_idf)) + geom_histogram()
+ggplot(token_Stars, aes(avg_err)) + geom_histogram()
+ggplot(token_Stars, aes(wtavg_err)) + geom_histogram()
+
+# check relationship between actual and average rating for each token
+cor(token_Stars$Stars, token_Stars$avg_rating)
+cor(token_Stars$Stars, token_Stars$wtavg_rating)
+
+# visually confirm relationship
+ggplot(token_Stars, aes(Stars, avg_err)) +
+  geom_jitter(position = position_jitter(width = .1),
+              alpha = .05)
+ggplot(token_Stars, aes(Stars, wtavg_err)) +
+  geom_jitter(position = position_jitter(width = .1),
+              alpha = .05)
+
+### looks like we could -0.5 from 1-star tokens, -0.25 from 2-star tokens, 
+### and +0.5 to 5-star tokens...
 
 # save word x star data
-write.csv(token_Stars, file.path(paste(getwd(),"Lists",sep = "/"),"token_Stars.csv"))
+write.csv(token_Stars, file.path(paste(getwd(),"Lists",sep = "/"),"token_Stars.csv"), row.names=F)
+
+#--------------------------------------------------------------------------------------------------
+### Create Sentiment model
 
 
-#-------------------------------------------------------------------------------------------------- 
-### Term-Freq, Inverse-Doc-Freq for proper weighting of frequent/infrequent terms
 
-library(tidyverse)
-library(tidytext)
-
-# identify # times word used per App (n / appFreq)
-tokens <- train_td %>%
-  count(Product, token, sort = TRUE) %>%
-  ungroup()
-
-# identify total # words used per App (totalFreq)
-total_tokens <- tokens %>% 
-  group_by(Product) %>% 
-  summarize(totalFreq = sum(n)) %>%
-  ungroup()
-
-# create data table with product, word, n, total words
-tokens <- left_join(tokens, total_tokens)
-# append to train_lem
-train_td2 <- left_join(train_td, tokens)
-colnames(train_td2) <- c("Index", "Product","Date","Stars","word","appFreq","totalFreq")
-
-# plot term frequency (appFreq/totalFreq) --> we don't have the standard long tail!
-ggplot(train_td2, aes(appFreq/totalFreq, fill = Product)) +
-  geom_histogram(show.legend = FALSE) +
-  facet_wrap(~Product, ncol = 2, scales = "free_y")
-
-# Zipf’s law: the frequency that a word appears is inversely proportional to its rank.
-freq_by_rank <- tokens %>% 
-  group_by(Product) %>% 
-  mutate(rank = row_number(), `term frequency` = appFreq/totalFreq)
-
-freq_by_rank
-
-# plot rank / Product
-freq_by_rank %>% 
-  ggplot(aes(rank, `term frequency`, color = Product)) + 
-  geom_line(size = 1.2, alpha = 0.8) + 
-  scale_x_log10() +
-  scale_y_log10()
-
-# this looks pretty consistent between products (especially between rank 10 and 500(?))
-rank_subset <- freq_by_rank %>% 
-  filter(rank < 500,
-         rank > 10)
-
-lm(log10(`term frequency`) ~ log10(rank), data = rank_subset) # linear model for central subset
-
-freq_by_rank %>% 
-  ggplot(aes(rank, `term frequency`, color = Product)) + 
-  geom_abline(intercept = -0.7754, slope = -1.0323, color = "gray50", linetype = 2) +
-  geom_line(size = 1.2, alpha = 0.8) + 
-  scale_x_log10() +
-  scale_y_log10()
-
-# create tf-idf
-tokens <- tokens %>%
-  bind_tf_idf(token, Product, n)
-  # Term Freq: (# times term appears in a document) / (Total number of terms in the document)
-  # Inverse Doc Freq: log_e(Total number of documents / Number of documents with term t in it)
-    # IDF is 0 for terms that appear in many documents
-  # tf_idf: weight; calculated by tf * idf
-
-# look at highest tf-idf
-# theoretically, this means that they are important
-tokens %>%
-  select(-totalFreq) %>%
-  arrange(desc(tf_idf))
-
-# look at lowest tf-idf (meaning they appear frequently in reviews)
-# *** also consider these for dropping ***
-tokens %>%
-  select(-totalFreq) %>%
-  arrange(tf_idf)
-
-# based on this, what should we add to stopwords?
-
-rm(tokens)
-rm(total_tokens)
-rm(freq_by_rank)
-rm(rank_subset)
 
 #--------------------------------------------------------------------------------------------------
 ### Sentiment analysis with tidytext

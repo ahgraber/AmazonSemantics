@@ -33,9 +33,10 @@ bigrams <- function (tbl_df) {
   # calculate term frequency
   frequency <- cbind(count(united, token, sort=T))
   
-  # drop infrequent terms (<5)
+  # keep only most frequent terms
+  q <- quantile(frequency$n, .95)
   infreqterms <- frequency %>%
-    filter(n<5) %>%
+    filter(n<q) %>%
     ungroup()
 
   # remove infrequent terms

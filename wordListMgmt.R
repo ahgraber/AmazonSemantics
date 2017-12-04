@@ -54,7 +54,7 @@ dataPath <- paste(getwd(),"Lists",sep="/")
   
   # add words to stop words list
   custom_spwords <- bind_rows(data_frame(word = c("nd", "ð", "absolutely", "music", "app",
-                                                  "quite", "star"), 
+                                                  "quite", "star", "listen"), 
                                          lexicon = "custom"), 
                               custom_spwords)
 
