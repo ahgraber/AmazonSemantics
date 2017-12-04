@@ -363,24 +363,18 @@ ggplot(token_Stars, aes(avg_rating)) + geom_histogram()
 ggplot(token_Stars, aes(avg_stdev)) + geom_histogram()
 ggplot(token_Stars, aes(tf)) + geom_histogram()
 ggplot(token_Stars, aes(idf)) + geom_histogram()
-ggplot(token_Stars, aes(tf_idf)) + geom_histogram()
 ggplot(token_Stars, aes(avg_err)) + geom_histogram()
-ggplot(token_Stars, aes(wtavg_err)) + geom_histogram()
 
 # check relationship between actual and average rating for each token
 cor(token_Stars$Stars, token_Stars$avg_rating)
-cor(token_Stars$Stars, token_Stars$wtavg_rating)
 
 # visually confirm relationship
 ggplot(token_Stars, aes(Stars, avg_err)) +
   geom_jitter(position = position_jitter(width = .1),
               alpha = .05)
-ggplot(token_Stars, aes(Stars, wtavg_err)) +
-  geom_jitter(position = position_jitter(width = .1),
-              alpha = .05)
 
-### looks like we could -0.5 from 1-star tokens, -0.25 from 2-star tokens, 
-### and +0.5 to 5-star tokens...
+### looks like we could -0.5 from 1,2,3-star tokens, and +0.5 to 5-star tokens...
+  # would that kind of linear error adjustment fall out of the linear model?
 
 # save word x star data
 write.csv(token_Stars, file.path(paste(getwd(),"Lists",sep = "/"),"token_Stars.csv"), row.names=F)
@@ -388,57 +382,17 @@ write.csv(token_Stars, file.path(paste(getwd(),"Lists",sep = "/"),"token_Stars.c
 #--------------------------------------------------------------------------------------------------
 ### Create Sentiment model
 
+# see predictiveModel.R for star-rating prediciton
+# see predictiveModelBinary.R for positive/negative prediction
 
 
-
-#--------------------------------------------------------------------------------------------------
-### Sentiment analysis with tidytext
-
-library(tidyverse)
-library(tidytext)
-library(quanteda)
-
-# get sentiments 
-bing <- get_sentiments("bing")  # positive/negative binary
-nrc <- get_sentiments("nrc")    # with emotion
-afinn <- get_sentiments("afinn")    # positive/negative score
-
-# or read in from edited files
-bing <- readin("bing_sentiment.csv", subfolder = "Lists",infolder = T)
-nrc <- readin("nrc_sentiment.csv", subfolder = "Lists",infolder = T)
-afinn <- readin("afinn_sentiment.csv", subfolder = "Lists",infolder = T)
-
-
-# train_td is our tidy structure of words
-# join +/- sentiment from "bing"
-# count
-# spread positive / negative score into separate columns
-# calculate sentiment delta
-train_bing <- train_td %>%
-  inner_join(bing) %>%
-  count(Product, sentiment) %>%
-  spread(sentiment, n, fill = 0) %>%
-  mutate(sentiment = positive - negative) %>%
-  mutate(method = "Bing")
-
-train_nrc <- train_td %>%
-  inner_join(nrc) %>%
-  count(Product, sentiment) %>%
-  spread(sentiment, n, fill = 0) %>%
-  mutate(sentiment = positive - negative) %>%
-  mutate(method = "NRC")
-
-train_afinn <- train_td %>%
-  inner_join(afinn) %>% 
-  group_by(Product) %>% 
-  summarise(sentiment = sum(score)) %>% 
-  mutate(method = "AFINN")
-
-# comparison plot of all 3 sentiments
-bind_rows(train_bing, train_nrc, train_afinn) %>%
-  ggplot(aes(Product, sentiment, fill = method)) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~method, ncol = 1, scales = "free_y")
+### Sentiment analysis with tidytext notes
+  # to do this, we may want to start doing the dictionary creation within the ngrams step
+  # i.e., earlier in the process
+    # or
+  # could run separated on big_td, but be prepared for NAs when not tetragrams
+# separated <- big_td %>%
+#   separate(token, c("word1", "word2", "word3", "word4"), sep = " ")
 
 
 # see 4.1.3 Using bigrams to provide context in sentiment analysis here: 
@@ -530,46 +484,52 @@ docMatrixStar <- dfm(lemma_corpus, ## lembag vs textbag
 
 
 #--------------------------------------------------------------------------------------------------
-
-
-
 ### Themes & Topic models with TM
+
 source("topicgraph.R")
-topicnumber = 9          #edit this for number of topicmodels/topic graphs
-topicgraph(train_td, topicnumber)
 
-# create td-idf by review index
-train_td3 <- train_td %>%
-  count(Index, word) %>%
-  bind_tf_idf(word, Index, n) %>%
-  arrange(desc(tf_idf))
+# create per-app datasets
+amazon_td <- big_td %>%
+  filter(Product == 'Amazon')
+ihr_td <- big_td %>%
+  filter(Product == 'iHeartRadio')
+pandora_td <- big_td %>%
+  filter(Product == 'Pandora')
+spotify_td <- big_td %>%
+  filter(Product == 'Spotify')
 
-# cast into dtm for topic model
-train_dtm <- cast_dtm(train_td3, Index, word, n)
+# series to review top terms in n models
+topicnumber = 4          #edit this for number of topicmodels/topic graphs
+topicgraph(ihr_td, topicnumber)
 
-# set a seed so that the output of the model is predictable
-total_lda <- LDA(train_dtm, k = 2, control = list(seed = 1234))
-  ## A LDA_VEM topic model with 2 topics.
+# look at keywords in context as needed
+options(width = 200)
+kwic(corpus_subset(lemma_corpus, Product == "iHeartRadio"), "Pandora")
+
+
+# for n most predictive models, rerurn to explore further
+# turn tidy framework into dfm, then add tf_idf, then cast as dtm for topicmodels
+train_dfm <- big_td %>%
+  select(-Product, -Date, -Stars) %>%
+  cast_dfm(term = token, document = Index, value = n) %>%
+  dfm(remove_punct = TRUE, remove_numbers = TRUE, tolower = TRUE) %>%
+  dfm_trim(min_count = 4, max_docfreq = 1000, verbose = TRUE) %>%
+  tfidf() 
+
+if (require(topicmodels)) {
+    ldaModel <- LDA(convert(train_dfm, to = "topicmodels"), k = topicnumber, 
+                    control = list(seed = 1234))
+    get_terms(ldaModel, 10)
+}
+
 
 # extracting the per-topic-per-word probabilities, called β (“beta”), from the model
 total_topics <- tidy(total_lda, matrix = "beta")
 total_topics
 
-# find top 10 terms
-total_top_terms <- total_topics %>%
-  group_by(topic) %>%
-  top_n(10, beta) %>%
-  ungroup() %>%
-  arrange(topic, -beta)
 
-# graph top 10 terms per topic (terms are damn near equivalent???)
-  # try again filtering by App
-total_top_terms %>%
-  mutate(term = reorder(term, beta)) %>%
-  ggplot(aes(term, beta, fill = factor(topic))) +
-  geom_col(show.legend = FALSE) +
-  facet_wrap(~ topic, scales = "free") +
-  coord_flip()
+
+# graph top 10 terms per topic alredy done by 'topicgraph'
 
 # identify words that have greatest difference between topics
 beta_spread <- total_topics %>%

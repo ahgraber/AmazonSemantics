@@ -13,7 +13,7 @@ seed <- token_Stars %>%
 
 # add sentiment code (-1, 0, 1)
 sentiment_dictionary <- seed %>%
-  mutate(modifier = modifier_gen(seed$avg_rating,3.85, 3.05)) %>%
+  mutate(modifier = modifier_gen(seed$avg_rating, 3.1, 2.9)) %>%
   select(-n)
   ### note - I tested about 40 combinations by hand to arrive at this - 
   ### there's got to be an optimization function that we could use for this...
@@ -64,25 +64,26 @@ ggplot(review_aggregate, aes(score, rating)) +
   ##### what about glm? or other non-linear model?
 model <- lm(rating~score, review_aggregate)
 summary(model)
+AIC(model)
 coefs <- coef(model)
-# Residual standard error: 0.9664 on 17392 degrees of freedom
-# Multiple R-squared:  0.3766,	Adjusted R-squared:  0.3765 
-# F-statistic: 1.051e+04 on 1 and 17392 DF,  p-value: < 2.2e-16
-# AIC: 8022.241
+# Residual standard error: 0.3149 on 17023 degrees of freedom
+# Multiple R-squared:  0.2884,	Adjusted R-squared:  0.2884 
+# F-statistic:  6900 on 1 and 17023 DF,  p-value: < 2.2e-16
+# AIC: 8978.808
 
 
 # logistic regression
 model2 <- glm(rating~score, review_aggregate, family=binomial())
 summary(model2)
 coefs2 <- coef(model2)
-#     Null deviance: 15888  on 17393  degrees of freedom
-# Residual deviance: 10176  on 17392  degrees of freedom
-# AIC: 10180
+#     Null deviance: 15382  on 17024  degrees of freedom
+# Residual deviance: 10970  on 17023  degrees of freedom
+# AIC: 10974
 
 
   ##### does prediction improve if we code ratings as pos/neg/neutral?
 cor(review_aggregate$rating,review_aggregate$score)
-# 0.5862659
+# 0.5370512
 
 #--------------------------------------------------------------------------------------------------
 ### Validate model
@@ -145,13 +146,13 @@ review_aggregate_test <- test_td_model %>%
             rating = mean(sentiment),
             count = n()) %>%
   mutate(score = modifier/count) %>%
-  mutate(prediction = coefs[1] + coefs[2]*score) %>%
+  mutate(prediction = predict(model, newdata=data_frame(score))) %>%
   mutate(deltas = prediction-rating) %>%
   mutate(whole_rating = round(prediction,0)) %>%
   mutate(accuracy = if_else((whole_rating-rating)==0, 1, 0))
 
 sum(review_aggregate_test$accuracy) / nrow(review_aggregate_test)
-# 85.1% !!
+# 84.8% !!
 
 ggplot(review_aggregate_test, aes(prediction, rating)) + geom_point()
 ggplot(review_aggregate_test, aes(deltas, rating)) + geom_point()
@@ -177,5 +178,5 @@ review_aggregate_test2 <- test_td_model %>%
   mutate(accuracy = if_else((whole_rating-rating)==0, 1, 0))
 
 sum(review_aggregate_test2$accuracy) / nrow(review_aggregate_test2)
-# 85.4% !!!
+# 85.0% !!!
 cor(review_aggregate_test2$rating, review_aggregate_test2$prediction)

@@ -13,7 +13,7 @@ seed <- token_Stars %>%
 
 # add sentiment code (-1, 0, 1)
 sentiment_dictionary <- seed %>%
-  mutate(modifier = modifier_gen(seed$avg_rating,3.85, 3.05)) %>%
+  mutate(modifier = modifier_gen(seed$avg_rating, 3.1, 2.9)) %>%
   select(-n)
   ### note - I tested about 40 combinations by hand to arrive at this - 
   ### there's got to be an optimization function that we could use for this...
@@ -58,14 +58,16 @@ ggplot(review_aggregate, aes(score, Stars)) +
   ##### what about glm? or other non-linear model?
 model <- lm(review_aggregate$Stars~review_aggregate$score)
 summary(model)
+AIC(model)
 coefs <- coef(model)
 # Residual standard error: 0.9664 on 17392 degrees of freedom
 # Multiple R-squared:  0.3766,	Adjusted R-squared:  0.3765 
 # F-statistic: 1.051e+04 on 1 and 17392 DF,  p-value: < 2.2e-16
+# AIC: 48134.46
 
   ##### does prediction improve if we code ratings as pos/neg/neutral?
 cor(review_aggregate$Stars,review_aggregate$score)
-# 0.613653
+# 0.5704884
 
 #--------------------------------------------------------------------------------------------------
 ### Validate model
@@ -122,12 +124,13 @@ review_aggregate_test <- test_td_model %>%
   group_by(Index) %>%
   summarise(modifier = sum(modifier, na.rm = TRUE), Stars = mean(Stars), count = n()) %>%
   mutate(score = modifier/count) %>%
-  mutate(star_prediction = coefs[1] + coefs[2]*score) %>%
+  mutate(star_predict(model, newdata=data_frame(score))) %>%
   mutate(deltas = star_prediction-Stars) %>%
   mutate(whole_stars = round(star_prediction,0)) %>%
   mutate(accuracy = if_else((whole_stars-Stars)==0, 1, 0))
 
 sum(review_aggregate_test$accuracy) / nrow(review_aggregate_test)
+# 49.1% accurate
 
 ggplot(review_aggregate_test, aes(star_prediction, Stars)) + geom_point()
 ggplot(review_aggregate_test, aes(deltas, Stars)) + geom_point()

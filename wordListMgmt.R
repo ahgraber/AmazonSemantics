@@ -50,7 +50,16 @@ dataPath <- paste(getwd(),"Lists",sep="/")
 
   # remove words from stop words list
   custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "not"))
-      # keep "not"; look for ngrams involving "not"
+  custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "than"))
+  custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "problem"))
+  custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "problems"))
+  custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "appreciate"))
+  custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "except"))  
+  custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "work"))
+  custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "works"))
+  custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "worked"))
+  custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "working"))
+  # keep "not"; look for ngrams involving "not"
   
   # add words to stop words list
   custom_spwords <- bind_rows(data_frame(word = c("nd", "ð", "absolutely", "music", "app",
