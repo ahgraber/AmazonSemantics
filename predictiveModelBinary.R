@@ -65,25 +65,23 @@ ggplot(review_aggregate, aes(score, rating)) +
 model <- lm(rating~score, review_aggregate)
 summary(model)
 AIC(model)
-coefs <- coef(model)
-# Residual standard error: 0.3149 on 17023 degrees of freedom
-# Multiple R-squared:  0.2884,	Adjusted R-squared:  0.2884 
-# F-statistic:  6900 on 1 and 17023 DF,  p-value: < 2.2e-16
-# AIC: 8978.808
+# Residual standard error: 0.3319 on 15500 degrees of freedom
+# Multiple R-squared:  0.2365,	Adjusted R-squared:  0.2364 
+# F-statistic:  4801 on 1 and 15500 DF,  p-value: < 2.2e-16
+# AIC: 9797.19
 
 
 # logistic regression
 model2 <- glm(rating~score, review_aggregate, family=binomial())
 summary(model2)
-coefs2 <- coef(model2)
-#     Null deviance: 15382  on 17024  degrees of freedom
-# Residual deviance: 10970  on 17023  degrees of freedom
-# AIC: 10974
+#     Null deviance: 14365  on 15501  degrees of freedom
+# Residual deviance: 11297  on 15500  degrees of freedom
+# AIC: 11301
 
 
   ##### does prediction improve if we code ratings as pos/neg/neutral?
 cor(review_aggregate$rating,review_aggregate$score)
-# 0.5370512
+# 0.4862863
 
 #--------------------------------------------------------------------------------------------------
 ### Validate model
@@ -152,7 +150,7 @@ review_aggregate_test <- test_td_model %>%
   mutate(accuracy = if_else((whole_rating-rating)==0, 1, 0))
 
 sum(review_aggregate_test$accuracy) / nrow(review_aggregate_test)
-# 84.8% !!
+# 84.6% !!
 
 ggplot(review_aggregate_test, aes(prediction, rating)) + geom_point()
 ggplot(review_aggregate_test, aes(deltas, rating)) + geom_point()
@@ -178,5 +176,5 @@ review_aggregate_test2 <- test_td_model %>%
   mutate(accuracy = if_else((whole_rating-rating)==0, 1, 0))
 
 sum(review_aggregate_test2$accuracy) / nrow(review_aggregate_test2)
-# 85.0% !!!
+# 84.6% !!!
 cor(review_aggregate_test2$rating, review_aggregate_test2$prediction)

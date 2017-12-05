@@ -50,6 +50,7 @@ dataPath <- paste(getwd(),"Lists",sep="/")
 
   # remove words from stop words list
   custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "not"))
+  custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "never"))
   custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "than"))
   custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "problem"))
   custom_spwords <- filter_at(spwords, vars("word"), any_vars(. != "problems"))
@@ -63,7 +64,12 @@ dataPath <- paste(getwd(),"Lists",sep="/")
   
   # add words to stop words list
   custom_spwords <- bind_rows(data_frame(word = c("nd", "ð", "absolutely", "music", "app",
-                                                  "quite", "star", "listen"), 
+                                                  "quite", "star", "listen", "love", "song",
+                                                  "radio", "artist", "na", "day", "kindle fire",
+                                                  "5", "track", "rock", "people", "country", "yay",
+                                                  "tune", "2", "facebook", "mp3", "3", "nice", 
+                                                  "4", "10", "email", "1", "family", "lot",
+                                                  "phone", "kindle"), 
                                          lexicon = "custom"), 
                               custom_spwords)
 

@@ -7,7 +7,7 @@ topicgraph <- function(tbl_df, kk){
   pacman::p_load(tidyverse, tidytext, topicmodels)
 
   # turn tidy framework into dfm, does some add'l cleaning, adds tf_idf
-  train_dfm <- big_td %>%
+  train_dfm <- tbl_df %>%
     select(-Product, -Date, -Stars) %>%
     cast_dfm(term = token, document = Index, value = n) %>%
     dfm(remove_punct = TRUE, remove_numbers = TRUE, tolower = TRUE) %>%
@@ -15,7 +15,7 @@ topicgraph <- function(tbl_df, kk){
     tfidf() 
 
 
-  ldaModel <- LDA(convert(train_dfm, to = "topicmodels"), k = kk)
+  ldaModel <- LDA(convert(train_dfm, to = "topicmodels"), k = kk, control = list(seed=1234))
   # get_terms(ldaModel, 5)
   
   # extracting the per-topic-per-word probabilities, called β (“beta”), from the model
@@ -38,6 +38,6 @@ topicgraph <- function(tbl_df, kk){
     facet_wrap(~ topic, scales = "free") +
     coord_flip()  
   
-  return(list(plot1))
+  return(list("plots" = list(plot1), "topics" = total_top_terms))
   
 }

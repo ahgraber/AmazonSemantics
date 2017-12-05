@@ -17,26 +17,10 @@
 # install.packages("ggraph")
 # install.packages("widyr")
 # install.packages("topicmodels")
+# install.packages("zoo")
 
-
-# install.packages("devtools")
-# devtools::install_github("ahgraber/tmt")
-
-# install.packages("stm")
-# install.packages("hunspell")
-# install.packages("NLP")
-
-#
 ## install.packages("reshape2") 
 ## install.packages("tm")
-## install.packages("qdap")
-## install.packages('RQDA')
-
-## install.packages("RSentiment") 
-  # see: https://cran.r-project.org/web/packages/RSentiment/vignettes/Introduction.html
-## install.packages("SentimentAnalysis") 
-  # see: https://cran.r-project.org/web/packages/SentimentAnalysis/vignettes/SentimentAnalysis.html
-## install.packages("sentiment") # unavailable for R 3.4.1
 
 #--------------------------------------------------------------------------------------------------
 ### Collect Data
@@ -181,7 +165,8 @@ typolist2 <- findTypos(cleaned2)
 cleaned3 <- lemmatize_strings(cleaned2, dictionary = lexicon::hash_lemmas)
 
 # use the cleaned, lemmatized data
-train_lem$Review <- cleaned3
+train_lem$Review <- cleaned3 %>%
+  filter(!is.na(Review))
 colnames(train_lem) <- c('Index','Product', 'Date', 'Stars','Review')
 
 # save the cleaned file!
@@ -198,49 +183,6 @@ rm(typolist2)
 rm(firstClean)
 rm(findTypos)
 rm(fixTypos)
-
-#-------------------------------------------------------------------------------------------------- 
-### Create corpora
-
-library(tidyverse)
-library(quanteda)
-library(textstem)
-source("readin.R")
-
-# Import data w/ appropriate col typing
-train_df <- readin(filename="train.csv", subfolder="Scraped Data", infolder=TRUE)
-colnames(train_df) <- c('Index','Product', 'Date', 'Stars','Review')
-train_df$Product <- as.factor(train_df$Product)
-train_df$Date <- as.Date(train_df$Date)
-
-# creating corpus where each review is a distinct document with lemmas
-review_corpus <- corpus(train_df$Review)
-# add potentially relevant additional data back to corpus
-docvars(review_corpus, "Index") <- train_df$Index
-docvars(review_corpus, "Product") <- train_df$Product
-docvars(review_corpus, "Date") <- train_df$Date
-docvars(review_corpus, "Stars") <- train_df$Stars
-
-summary(review_corpus)
-
-# Import data w/ appropriate col typing
-train_lem <- readin(filename="train_lem.csv", subfolder="Scraped Data", infolder=TRUE)
-colnames(train_lem) <- c('Index','Product', 'Date', 'Stars','Review')
-train_lem$Product <- as.factor(train_lem$Product)
-train_lem$Date <- as.Date(train_lem$Date)
-
-# creating corpus where each review is a distinct document with lemmas
-lemma_corpus <- corpus(train_lem$Review)
-# add potentially relevant additional data back to corpus
-docvars(lemma_corpus, "Index") <- train_lem$Index
-docvars(lemma_corpus, "Product") <- train_lem$Product
-docvars(lemma_corpus, "Date") <- train_lem$Date
-docvars(lemma_corpus, "Stars") <- train_lem$Stars
-
-summary(lemma_corpus)
-
-# rm(review_corpus)
-# rm(lemma_corpus)
 
 #-------------------------------------------------------------------------------------------------- 
 ### Stopword management - see wordListMgmt.R
@@ -317,8 +259,8 @@ library(scales)
 # expect a warning about rows with missing values being removed
 ggplot(frequency, aes(x = proportion, y = `Amazon`, color = abs(`Amazon` - proportion))) +
   geom_abline(color = "gray40", lty = 2) +
-  geom_jitter(alpha = 0.1, size = 2.5, width = 0.3, height = 0.3) +
-  geom_text(aes(label = word), check_overlap = TRUE, vjust = 1.5) +
+  geom_jitter(alpha = 0.1, size = 2.5, width = 0.3, height = 0.3) + 
+  geom_text(aes(label = token), check_overlap = TRUE, vjust = 1.5) +
   scale_x_log10(labels = percent_format()) +
   scale_y_log10(labels = percent_format()) +
   scale_color_gradient(limits = c(0, 0.001), low = "darkslategray4", high = "gray75") +
@@ -379,12 +321,90 @@ ggplot(token_Stars, aes(Stars, avg_err)) +
 # save word x star data
 write.csv(token_Stars, file.path(paste(getwd(),"Lists",sep = "/"),"token_Stars.csv"), row.names=F)
 
+token_Stars <- readin(filename="token_Stars.csv", subfolder="Lists", infolder=TRUE)
 #--------------------------------------------------------------------------------------------------
 ### Create Sentiment model
 
 # see predictiveModel.R for star-rating prediciton
 # see predictiveModelBinary.R for positive/negative prediction
 
+#--------------------------------------------------------------------------------------------------
+### Time series analysis
+
+library(zoo)
+
+# Create aggregated data by quarter
+time_series <- train_lem %>%
+  mutate(sentiment = case_when(
+    Stars >= 4 ~ 1,          # 4,5 = positive
+    Stars < 4 ~ 0)) %>%      # 1-3 = negative
+  ungroup()
+
+time_series <- time_series %>%
+  mutate(quarter = as.Date(as.yearqtr(time_series$Date))) %>%
+  group_by(quarter, Product) %>%
+  summarise(avg_sentiment = mean(sentiment))
+
+# create prediction data
+time_series_prediction <- left_join(review_aggregate_test, test_lem)
+
+time_series_prediction <- time_series_prediction %>%
+  mutate(prediction= predict(model2, newdata = data_frame(score), type="response")) %>%
+  mutate(int_prediction = round(prediction, 0))
+
+time_series_prediction <- time_series_prediction %>%  
+  mutate(quarter = as.Date(as.yearqtr(time_series_prediction$Date))) %>%
+  group_by(quarter, Product) %>%
+  summarise(avg_prediction = mean(int_prediction))
+
+# filter time series by product
+amazon_time_series <- time_series %>%
+  filter(Product == "Amazon")
+spotify_time_series <- time_series %>%
+  filter(Product == "Spotify")
+pandora_time_series <- time_series %>%
+  filter(Product == "Pandora")
+iheartradio_time_series <- time_series %>%
+  filter(Product == "iHeartRadio")
+
+amazon_time_series_prediction <- time_series_prediction %>%
+  filter(Product == "Amazon")
+spotify_time_series_prediction <- time_series_prediction %>%
+  filter(Product == "Spotify")
+pandora_time_series_prediction <- time_series_prediction %>%
+  filter(Product == "Pandora")
+iheartradio_time_series_prediction <- time_series_prediction %>%
+  filter(Product == "iHeartRadio")
+
+# ones vectors for area charts
+ones_amazon <- seq(1,1,length.out=length(amazon_time_series$quarter))
+ones_spotify <- seq(1,1,length.out=length(spotify_time_series$quarter))
+ones_pandora <- seq(1,1,length.out=length(pandora_time_series$quarter))
+ones_iheartradio <- seq(1,1,length.out=length(iheartradio_time_series$quarter))
+
+# charts
+ggplot(amazon_time_series) + 
+  geom_area(aes(quarter, ones_amazon), fill = "#5ea34d") + 
+  geom_area(aes(quarter, 1-avg_sentiment), fill = "#b54747") + 
+  geom_line(aes(quarter, 1-amazon_time_series_prediction$avg_prediction), 
+            colour = "black", size = 2)
+ggplot(spotify_time_series) + 
+  geom_area(aes(quarter, ones_spotify), fill = "#5ea34d") + 
+  geom_area(aes(quarter, 1-avg_sentiment), fill = "#b54747") + 
+  geom_line(aes(quarter, 1-spotify_time_series_prediction$avg_prediction), 
+            colour = "black", size = 2)
+ggplot(pandora_time_series) + 
+  geom_area(aes(quarter, ones_pandora), fill = "#5ea34d") + 
+  geom_area(aes(quarter, 1-avg_sentiment), fill = "#b54747") + 
+  geom_line(aes(quarter, 1-pandora_time_series_prediction$avg_prediction), 
+            colour = "black", size = 2)
+ggplot(iheartradio_time_series) + 
+  geom_area(aes(quarter, ones_iheartradio), fill = "#5ea34d") + 
+  geom_area(aes(quarter, 1-avg_sentiment), fill = "#b54747") + 
+  geom_line(aes(quarter, 1-iheartradio_time_series_prediction$avg_prediction), 
+            colour = "black", size = 2)
+
+#--------------------------------------------------------------------------------------------------
 
 ### Sentiment analysis with tidytext notes
   # to do this, we may want to start doing the dictionary creation within the ngrams step
@@ -483,6 +503,53 @@ docMatrixStar <- dfm(lemma_corpus, ## lembag vs textbag
                      remove = custom_spwords$word, stem = TRUE)
 
 
+#-------------------------------------------------------------------------------------------------- 
+### Create corpora
+
+library(tidyverse)
+library(quanteda)
+library(textstem)
+source("readin.R")
+
+# Import data w/ appropriate col typing
+train_df <- readin(filename="train.csv", subfolder="Scraped Data", infolder=TRUE)
+colnames(train_df) <- c('Index','Product', 'Date', 'Stars','Review')
+train_df$Product <- as.factor(train_df$Product)
+train_df$Date <- as.Date(train_df$Date)
+
+# creating corpus where each review is a distinct document with lemmas
+review_corpus <- corpus(train_df$Review)
+# add potentially relevant additional data back to corpus
+docvars(review_corpus, "Index") <- train_df$Index
+docvars(review_corpus, "Product") <- train_df$Product
+docvars(review_corpus, "Date") <- train_df$Date
+docvars(review_corpus, "Stars") <- train_df$Stars
+
+summary(review_corpus)
+
+# Import data w/ appropriate col typing
+train_lem <- readin(filename="train_lem.csv", subfolder="Scraped Data", infolder=TRUE)
+colnames(train_lem) <- c('Index','Product', 'Date', 'Stars','Review')
+train_lem$Product <- as.factor(train_lem$Product)
+train_lem$Date <- as.Date(train_lem$Date)
+
+# creating corpus where each review is a distinct document with lemmas
+lemma_corpus <- corpus(train_lem$Review)
+# add potentially relevant additional data back to corpus
+docvars(lemma_corpus, "Index") <- train_lem$Index
+docvars(lemma_corpus, "Product") <- train_lem$Product
+docvars(lemma_corpus, "Date") <- train_lem$Date
+docvars(lemma_corpus, "Stars") <- train_lem$Stars
+
+summary(lemma_corpus)
+
+# look at keywords in context as needed
+options(width = 200)
+kwic(corpus_subset(lemma_corpus, Product == "iHeartRadio"), "Pandora")
+
+# rm(review_corpus)
+# rm(lemma_corpus)
+
 #--------------------------------------------------------------------------------------------------
 ### Themes & Topic models with TM
 
@@ -491,6 +558,13 @@ source("topicgraph.R")
 # create per-app datasets
 amazon_td <- big_td %>%
   filter(Product == 'Amazon')
+
+amazon_pos <- amazon_td %>%
+  filter(Stars >= 4)
+
+amazon_neg <- amazon_td %>%
+  filter(Stars < 4)
+
 ihr_td <- big_td %>%
   filter(Product == 'iHeartRadio')
 pandora_td <- big_td %>%
@@ -498,38 +572,173 @@ pandora_td <- big_td %>%
 spotify_td <- big_td %>%
   filter(Product == 'Spotify')
 
-# series to review top terms in n models
-topicnumber = 4          #edit this for number of topicmodels/topic graphs
-topicgraph(ihr_td, topicnumber)
+### series to review top terms in n models
+# edit this for number of topicmodels/topic graphs
+topicnumber = 5
 
-# look at keywords in context as needed
-options(width = 200)
-kwic(corpus_subset(lemma_corpus, Product == "iHeartRadio"), "Pandora")
+amazon <- topicgraph(amazon_td, topicnumber)
+amazon$plots
+amazon.topics<-as_data_frame(amazon$topics) %>%
+  mutate(amazonTopic = topic) %>%
+  select(-topic)
 
+amazon <- topicgraph(amazon_td, topicnumber)
+amazon$plots
+amazon.topics<-as_data_frame(amazon$topics) %>%
+  mutate(amazonTopic = topic) %>%
+  select(-topic)
 
+amazonpos <- topicgraph(amazon_pos, 4)
+amazonpos$plots
+amazonpos.topics<-as_data_frame(amazonpos$topics) %>%
+  mutate(amazonTopic = topic) %>%
+  select(-topic)
+# 1 = better than pandora
+# 2 = amazon prime
+# 3 = free & easy
+# 4 = variety
+
+      # negative topics don't make sense :(
+      amazonneg <- topicgraph(amazon_neg, 9)
+      amazonneg$plots
+      amazonneg.topics<-as_data_frame(amazonneg$topics) %>%
+        mutate(amazonTopic = topic) %>%
+        select(-topic)
+
+      
+### code to run topic model
 # for n most predictive models, rerurn to explore further
 # turn tidy framework into dfm, then add tf_idf, then cast as dtm for topicmodels
-train_dfm <- big_td %>%
-  select(-Product, -Date, -Stars) %>%
+amazon_dfm <- amazon_pos %>%
   cast_dfm(term = token, document = Index, value = n) %>%
   dfm(remove_punct = TRUE, remove_numbers = TRUE, tolower = TRUE) %>%
   dfm_trim(min_count = 4, max_docfreq = 1000, verbose = TRUE) %>%
   tfidf() 
 
 if (require(topicmodels)) {
-    ldaModel <- LDA(convert(train_dfm, to = "topicmodels"), k = topicnumber, 
+    amazonPosLDA <- LDA(convert(amazon_dfm, to = "topicmodels"), k = 4, 
                     control = list(seed = 1234))
-    get_terms(ldaModel, 10)
+    ihr_terms <- get_terms(amazonPosLDA, 10)
+}
+
+# examine the per-document-per-topic probabilities, called γ (“gamma”)
+# this is essentially a classificiation model!
+gammas <- tidy(amazonPosLDA, matrix = "gamma")
+gammas$document <- as.integer(gammas$document)
+# turn each topic into a column
+gammas <- gammas %>%
+  spread(topic, gamma)
+colnames(gammas) <- c("Index", "Gamma1","Gamma2","Gamma3","Gamma4")
+# recode whether the review contains the topic
+gammas <- gammas %>%
+  mutate(Topic1 = if_else(Gamma1 > 0.50, 1, 0)) %>%
+  mutate(Topic2 = if_else(Gamma2 > 0.50, 1, 0)) %>%
+  mutate(Topic3 = if_else(Gamma3 > 0.50, 1, 0)) %>%
+  mutate(Topic4 = if_else(Gamma4 > 0.50, 1, 0))
+amazonPosTopics <- gammas %>%
+  select(-Gamma1, -Gamma2, -Gamma3, -Gamma4)
+
+amazonPosTopics <- left_join(amazonPosTopics, train_lem)
+
+amazonPosTopics <- amazonPosTopics %>%
+  mutate(quarter = as.Date(as.yearqtr(Date)))
+
+ggplot(amazonPosTopics) + 
+  geom_point(aes(quarter, sum(Topic1)/nrow(amazonPosTopics)), fill = "Red") + 
+  geom_point(aes(quarter, sum(Topic2)/nrow(amazonPosTopics)), fill = "Blue") + 
+  geom_point(aes(quarter, sum(Topic3)/nrow(amazonPosTopics)), fill = "Green") + 
+  geom_point(aes(quarter, sum(Topic4)/nrow(amazonPosTopics)), fill = "Yellow")
+
+
+
+
+
+
+  
+amazonPosTopics %>%
+  group_by(Index) %>%
+  gather(`Topic1`, `Topic2`, `Topic3`, `Topic4`, key = "Topic", value = "Present") %>%
+  # mutate(Product = reorder(Product, gamma * topic)) %>%
+  ggplot(aes(Topic, Stars)) +
+    geom_jitter(position = position_jitter(height = .1),
+              alpha = .05)
+
+
+app_documents %>%
+  #mutate(Product = reorder(Product, gamma * topic)) %>%
+  ggplot(aes(topic, gamma)) +
+    geom_jitter(position = position_jitter(height = .1),
+              aes(shape = Product,
+                  color = Product),
+              alpha = .05)
+# clearly we don't have great predictive power to identify apps based on the reviews
+
+
+######-----------##########
+            ######-----------##########
+            ihr <- topicgraph(ihr_td, topicnumber)
+            ihr$plots
+            ihr.topics<-as_data_frame(ihr$topics) %>%
+              mutate(ihrTopic = topic) %>%
+              select(-topic)
+            
+            pandora <- topicgraph(pandora_td, topicnumber)
+            pandora$plots
+            pandora.topics<-as_data_frame(pandora$topics) %>%
+              mutate(pandoraTopic = topic) %>%
+              select(-topic)
+            
+            spotify <- topicgraph(spotify_td, topicnumber)
+            spotify$plots
+            spotify.topics<-as_data_frame(spotify$topics) %>%
+              mutate(spotifyTopic = topic) %>%
+              select(-topic)
+            
+            # aggregate topics & terms; try to identify unique topics per app
+            appTopics <- amazon.topics %>%
+              left_join(ihr.topics, by = c("term" = "term")) %>%
+              left_join(pandora.topics, by = c("term" = "term")) %>%
+              left_join(spotify.topics, by = c("term" = "term"))
+            
+            appTopicsNA <- appTopics %>%
+              mutate(findNA = beta.x * beta.y * beta.x.x * beta.y.y) 
+            appTopicsNA <- appTopicsNA %>%
+              filter(is.na(findNA))
+
+            
+            amazon_pos$Product <- as.factor(amazon_pos$Product)
+app_documents <- amazon_pos %>%
+  select(Index, Product) %>%
+  full_join(total_documents, by = c("Index" = "document")) %>%
+  group_by(Index) %>%
+  mutate(dups = duplicated(Index, topic)) %>%
+  filter(!dups) %>%
+  select(-dups) %>%
+  ungroup() %>%
+  mutate(score = topic * gamma)           
+            
+            
+### code to run topic model
+# for n most predictive models, rerurn to explore further
+# turn tidy framework into dfm, then add tf_idf, then cast as dtm for topicmodels
+train_dfm <- big_td %>%
+  select(-Date, -Stars) %>%
+  cast_dfm(term = token, document = Index, value = n) %>%
+  dfm(remove_punct = TRUE, remove_numbers = TRUE, tolower = TRUE) %>%
+  dfm_trim(min_count = 4, max_docfreq = 1000, verbose = TRUE) %>%
+  tfidf() 
+
+if (require(topicmodels)) {
+    ldaModel <- LDA(convert(train_dfm, to = "topicmodels"), k = 4, 
+                    control = list(seed = 1234))
+    ihr_terms <- get_terms(ldaModel, 10)
 }
 
 
 # extracting the per-topic-per-word probabilities, called β (“beta”), from the model
-total_topics <- tidy(total_lda, matrix = "beta")
+# i.e., probability a given token will appear in a given topic
+total_topics <- tidy(ldaModel, matrix = "beta")
 total_topics
-
-
-
-# graph top 10 terms per topic alredy done by 'topicgraph'
 
 # identify words that have greatest difference between topics
 beta_spread <- total_topics %>%
@@ -549,52 +758,37 @@ top_beta_spread %>%
   geom_col(show.legend = FALSE) +
   coord_flip()
   
-#examine the per-document-per-topic probabilities, called γ (“gamma”)
-total_documents <- tidy(total_lda, matrix = "gamma")
-total_documents
+# examine the per-document-per-topic probabilities, called γ (“gamma”)
+# this is essentially a classificiation model!
+total_documents <- tidy(ldaModel, matrix = "gamma")
+total_documents$document <- as.integer(total_documents$document)
+big_td$Product <- as.factor(big_td$Product)
+app_documents <- big_td %>%
+  select(Index, Product) %>%
+  right_join(total_documents, by = c("Index" = "document")) %>%
+  group_by(Index) %>%
+  #mutate(dups = duplicated(Index)) %>%
+  #filter(!dups) %>%
+  #select(-dups) %>%
+  ungroup() %>%
+  mutate(score = topic * gamma)
 
+app_documents %>%
+  group_by(Index) %>%
+  mutate(Product = reorder(Product, gamma * topic)) %>%
+  ggplot(aes(fill = factor(Product), gamma)) +
+  geom_histogram(bins = 4) +
+  facet_wrap(~ topic)
+# clearly we don't have great predictive power to identify apps based on the reviews
 
-
-
-
-#--------------------------------------------------------------------------------------------------
-### Themes & Topic models with STM
-
-# https://cran.r-project.org/web/packages/quanteda/vignettes/quickstart.html#corpus-management-tools 
-library(stm) # or topicmodels (using Latent Dirichlet allocation)
-
-# plotRemoved will plot the number of words and documents removed for different thresholds
-plotRemoved(docMatrix$Re, lower.thresh = seq(1, 200, by = 100))
-
-out <- prepDocuments(processed$documents, processed$vocab, 
-                     processed$meta, lower.thresh = 15)
-
-
-
-
-
-### Build dictionary for hypothesized themes
-# myDict <- dictionary(list(terror = c("terrorism", "terrorists", "threat"),
-#                           economy = c("jobs", "business", "grow", "work")))
-
-# byPresMat <- dfm(recentCorpus, dictionary = myDict)
-# byPresMat
-
-
-# quantdfm <- dfm(data_corpus_irishbudget2010, 
-#                 remove_punct = TRUE, remove_numbers = TRUE, remove = stopwords("english"))
-# quantdfm <- dfm_trim(quantdfm, min_count = 4, max_docfreq = 10, verbose = TRUE)
-# ## Removing features occurring:
-# ##   - fewer than 4 times: 3,527
-# ##   - in more than 10 documents: 72
-# ##   Total features removed: 3,599 (73.8%).
-# quantdfm
-# ## Document-feature matrix of: 14 documents, 1,279 features (64.6% sparse).
-# 
-# if (require(topicmodels)) {
-#   myLDAfit20 <- LDA(convert(quantdfm, to = "topicmodels"), k = 20)
-#   get_terms(myLDAfit20, 5)
-# }
+app_documents %>%
+  #mutate(Product = reorder(Product, gamma * topic)) %>%
+  ggplot(aes(topic, gamma)) +
+    geom_jitter(position = position_jitter(height = .1),
+              aes(shape = Product,
+                  color = Product),
+              alpha = .05)
+# clearly we don't have great predictive power to identify apps based on the reviews
 
 #--------------------------------------------------------------------------------------------------
 
@@ -602,25 +796,32 @@ out <- prepDocuments(processed$documents, processed$vocab,
 
 # https://cran.r-project.org/web/packages/quanteda/vignettes/quickstart.html#corpus-management-tools 
 
-# presDfm <- dfm(corpus_subset(data_corpus_inaugural, Year > 1980), 
-#                remove = stopwords("english"), stem = TRUE, remove_punct = TRUE)
-# obamaSimil <- textstat_simil(presDfm, c("2009-Obama" , "2013-Obama"), 
-#                              margin = "documents", method = "cosine")
+# turn tidy framework into dfm, then add tf_idf, then cast as dtm for topicmodels
+train_dfm <- big_td %>%
+  # select(-Date, -Stars) %>%
+  cast_dfm(term = token, document = Index, value = n)
+  docvars(train_dfm, "Index") <- big_td$Index
+  docvars(train_dfm, "Product") <- big_td$Product
+  docvars(train_dfm, "Date") <- big_td$Date
+  docvars(train_dfm, "Stars") <- big_td$Stars
+train_dfm <- train_dfm %>%
+  dfm(remove_punct = TRUE, remove_numbers = TRUE, tolower = TRUE) %>%
+  dfm_trim(min_count = 4, max_docfreq = 1000, verbose = TRUE) %>%
+  tfidf() 
 
-# data(data_corpus_SOTU, package = "quantedaData")
-# presDfm <- dfm(corpus_subset(data_corpus_SOTU, Date > as.Date("1980-01-01")), 
-#                stem = TRUE, remove_punct = TRUE,
-#                remove = stopwords("english"))
-# presDfm <- dfm_trim(presDfm, min_count = 5, min_docfreq = 3)
-# # hierarchical clustering - get distances on normalized dfm
-# presDistMat <- textstat_dist(dfm_weight(presDfm, "relfreq"))
-# # hiarchical clustering the distance object
-# presCluster <- hclust(presDistMat)
-# # label with document names
-# presCluster$labels <- docnames(presDfm)
-# # plot as a dendrogram
-# plot(presCluster, xlab = "", sub = "", main = "Euclidean Distance on Normalized Token Frequency")
+# similarities btwn documents
+  ### how can we run this per-app?  need to group by app-document?
+docSimil <- textstat_simil(train_dfm, margin="documents", method="cosine")
 
+# hierarchical clustering - get distances on normalized dfm
+docDistMat <- textstat_dist(dfm_weight(train_dfm, "relfreq"))
+# hiarchical clustering the distance object
+docCluster <- hclust(docDistMat)
+# label with document names
+docCluster$labels <- docnames(train_dfm)
+# plot as a dendrogram
+plot(docCluster, xlab = "", sub = "", main = "Euclidean Distance on Normalized Token Frequency")
+  # need to simplify the data!!!
 
 #--------------------------------------------------------------------------------------------------
 ### Standard EOF
