@@ -25,7 +25,7 @@ topicgraph <- function(tbl_df, kk){
   # find top 10 terms
   total_top_terms <- total_topics %>%
     group_by(topic) %>%
-    top_n(10, beta) %>%
+    top_n(20, beta) %>%
     ungroup() %>%
     arrange(topic, -beta)
   

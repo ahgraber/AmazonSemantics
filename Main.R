@@ -150,7 +150,7 @@ train_lem <- train_df
 toclean <- train_df$Review
 
 # identify typos in data
-typolist <- findTypos(toclean)
+# typolist <- findTypos(toclean)
 
 # clean reviews and app
   # replace_number seems to be causing problems
@@ -159,7 +159,7 @@ cleaned1 <- firstClean(toclean)
 cleaned2 <- fixTypos(cleaned1)
 
 # check to see if typos removed
-typolist2 <- findTypos(cleaned2)
+# typolist2 <- findTypos(cleaned2)
 
 # lemmatize
 cleaned3 <- lemmatize_strings(cleaned2, dictionary = lexicon::hash_lemmas)
@@ -297,6 +297,13 @@ rm(tetragrams)
 #-------------------------------------------------------------------------------------------------- 
 ### Identify relationship between token and star rating
 source("tokenValues.R")
+source("readin.R")
+
+# Import data w/ appropriate col typing
+big_td <- readin(filename="big_td.csv", subfolder="Lists", infolder=TRUE)
+colnames(big_td) <- c('Index','Product', 'Date', 'Stars','token','n')
+big_td$Product <- as.factor(big_td$Product)
+big_td$Date <- as.Date(big_td$Date)
 
 token_Stars <- tokenValues(big_td, "Index")
 
@@ -332,6 +339,14 @@ token_Stars <- readin(filename="token_Stars.csv", subfolder="Lists", infolder=TR
 ### Time series analysis
 
 library(zoo)
+
+source("readin.R")
+
+# Import data w/ appropriate col typing
+train_lem <- readin(filename="train_lem.csv", subfolder="Scraped Data", infolder=TRUE)
+colnames(train_lem) <- c('Index','Product', 'Date', 'Stars','Review')
+train_lem$Product <- as.factor(train_lem$Product)
+train_lem$Date <- as.Date(train_lem$Date)
 
 # Create aggregated data by quarter
 time_series <- train_lem %>%
@@ -553,7 +568,16 @@ kwic(corpus_subset(lemma_corpus, Product == "iHeartRadio"), "Pandora")
 #--------------------------------------------------------------------------------------------------
 ### Themes & Topic models with TM
 
+library(zoo)
+
 source("topicgraph.R")
+source("readin.R")
+
+# Import data w/ appropriate col typing
+big_td <- readin(filename="big_td.csv", subfolder="Lists", infolder=TRUE)
+colnames(big_td) <- c('Index','Product', 'Date', 'Stars','token','n')
+big_td$Product <- as.factor(big_td$Product)
+big_td$Date <- as.Date(big_td$Date)
 
 # create per-app datasets
 amazon_td <- big_td %>%
@@ -574,29 +598,17 @@ spotify_td <- big_td %>%
 
 ### series to review top terms in n models
 # edit this for number of topicmodels/topic graphs
-topicnumber = 5
+topicnumber = 4
 
-amazon <- topicgraph(amazon_td, topicnumber)
-amazon$plots
-amazon.topics<-as_data_frame(amazon$topics) %>%
-  mutate(amazonTopic = topic) %>%
-  select(-topic)
-
-amazon <- topicgraph(amazon_td, topicnumber)
-amazon$plots
-amazon.topics<-as_data_frame(amazon$topics) %>%
-  mutate(amazonTopic = topic) %>%
-  select(-topic)
-
-amazonpos <- topicgraph(amazon_pos, 4)
+amazonpos <- topicgraph(amazon_pos, topicnumber)
 amazonpos$plots
 amazonpos.topics<-as_data_frame(amazonpos$topics) %>%
   mutate(amazonTopic = topic) %>%
   select(-topic)
-# 1 = better than pandora
+# 1 = amazon device friendly
 # 2 = amazon prime
-# 3 = free & easy
-# 4 = variety
+# 3 = better than pandora
+# 4 = free & easy
 
       # negative topics don't make sense :(
       amazonneg <- topicgraph(amazon_neg, 9)
@@ -616,45 +628,100 @@ amazon_dfm <- amazon_pos %>%
   tfidf() 
 
 if (require(topicmodels)) {
-    amazonPosLDA <- LDA(convert(amazon_dfm, to = "topicmodels"), k = 4, 
+    amazonPosLDA <- LDA(convert(amazon_dfm, to = "topicmodels"), k = topicnumber, 
                     control = list(seed = 1234))
-    ihr_terms <- get_terms(amazonPosLDA, 10)
+    ihr_terms <- get_terms(amazonPosLDA, 20)
 }
 
 # examine the per-document-per-topic probabilities, called γ (“gamma”)
 # this is essentially a classificiation model!
 gammas <- tidy(amazonPosLDA, matrix = "gamma")
 gammas$document <- as.integer(gammas$document)
+
 # turn each topic into a column
 gammas <- gammas %>%
   spread(topic, gamma)
 colnames(gammas) <- c("Index", "Gamma1","Gamma2","Gamma3","Gamma4")
 # recode whether the review contains the topic
-gammas <- gammas %>%
+topicGammas <- gammas %>%
   mutate(Topic1 = if_else(Gamma1 > 0.50, 1, 0)) %>%
   mutate(Topic2 = if_else(Gamma2 > 0.50, 1, 0)) %>%
   mutate(Topic3 = if_else(Gamma3 > 0.50, 1, 0)) %>%
   mutate(Topic4 = if_else(Gamma4 > 0.50, 1, 0))
-amazonPosTopics <- gammas %>%
+
+amazonPosTopics <- topicGammas %>%
   select(-Gamma1, -Gamma2, -Gamma3, -Gamma4)
+amazonPosTopics <- left_join(amazonPosTopics, train_lem) %>%
+  filter(!is.na(Product)) %>%
+  select(-Review)
 
-amazonPosTopics <- left_join(amazonPosTopics, train_lem)
-
+# amazonPosTopics <- amazonPosTopics %>%
+#   mutate(quarter = as.Date(as.yearqtr(Date))) %>%
+#   group_by(quarter) %>%
+#   summarize(Topic1n = sum(Topic1), Topic2n = sum(Topic2),
+#             Topic3n = sum(Topic3), Topic4n = sum(Topic4)) %>%
+#   mutate(quartersum = Topic1n+Topic2n+Topic3n+Topic4n) %>%
+#   mutate(Topic1prop = Topic1n/quartersum) %>%
+#   mutate(Topic2prop = Topic2n/quartersum) %>%
+#   mutate(Topic3prop = Topic3n/quartersum) %>%
+#   mutate(Topic4prop = Topic4n/quartersum)
+  
 amazonPosTopics <- amazonPosTopics %>%
-  mutate(quarter = as.Date(as.yearqtr(Date)))
+  mutate(quarter = as.Date(as.yearqtr(Date))) %>%
+  add_count(quarter) %>%
+  group_by(quarter) %>%
+  mutate(Topic1n = sum(Topic1)) %>%
+  mutate(Topic2n = sum(Topic2)) %>%
+  mutate(Topic3n = sum(Topic3)) %>%
+  mutate(Topic4n = sum(Topic4)) %>%
+  mutate(Topic1prop = Topic1n/n) %>%
+  mutate(Topic2prop = Topic2n/n) %>%
+  mutate(Topic3prop = Topic3n/n) %>%
+  mutate(Topic4prop = Topic4n/n) %>%
+  mutate(dups = duplicated(quarter)) %>%
+  filter(!dups) %>%
+  select(-dups)
+
+write.csv(amazonPosTopics, file.path(getwd(),"positiveTopicsForCharts.csv"))
 
 ggplot(amazonPosTopics) + 
-  geom_point(aes(quarter, sum(Topic1)/nrow(amazonPosTopics)), fill = "Red") + 
-  geom_point(aes(quarter, sum(Topic2)/nrow(amazonPosTopics)), fill = "Blue") + 
-  geom_point(aes(quarter, sum(Topic3)/nrow(amazonPosTopics)), fill = "Green") + 
-  geom_point(aes(quarter, sum(Topic4)/nrow(amazonPosTopics)), fill = "Yellow")
+  geom_line(aes(quarter, Topic1prop), color = "Red") + 
+  geom_line(aes(quarter, Topic2prop), color = "Blue") + 
+  geom_line(aes(quarter, Topic3prop), color = "Green") + 
+  geom_line(aes(quarter, Topic4prop), color = "Yellow") +
+  geom_point(aes(quarter, Topic1prop), color = "Red", size = 3) +
+  geom_point(aes(quarter, Topic2prop), color = "Blue", size = 3) + 
+  geom_point(aes(quarter, Topic3prop), color = "Green", size = 3) +
+  geom_point(aes(quarter, Topic4prop), color = "Yellow", size = 3)
 
 
+uberplot <- left_join(amazonPosTopics, amazon_time_series) %>%
+  filter(!is.na(Product)) %>%
+  group_by(quarter) %>%
+  mutate(dups = duplicated(quarter)) %>%
+  filter(!dups) %>%
+  select(-dups)
+ones_amazon <- seq(1,1,length.out=length(amazonPosTopics$quarter))
+ggplot(uberplot) + 
+  geom_area(aes(quarter, 1), fill = "#5ea34d") + 
+  geom_area(aes(quarter, 1-avg_sentiment), fill = "#b54747") + 
+  geom_line(aes(quarter, Topic1prop), color = "Red") + 
+  geom_line(aes(quarter, Topic2prop), color = "Blue") + 
+  geom_line(aes(quarter, Topic3prop), color = "Green") + 
+  geom_line(aes(quarter, Topic4prop), color = "Yellow") 
+
+ggplot(amazon_time_series) + 
+  geom_area(aes(quarter, ones_amazon), fill = "#5ea34d") + 
+  geom_area(aes(quarter, 1-avg_sentiment), fill = "#b54747") 
 
 
+# ggplot(amazon_time_series) + 
+#   geom_area(aes(quarter, ones_amazon), fill = "#5ea34d") + 
+#   geom_area(aes(quarter, 1-avg_sentiment), fill = "#b54747") + 
+#   geom_line(aes(quarter, 1-amazon_time_series_prediction$avg_prediction), 
+#             colour = "black", size = 2)
 
-
-  
+ 
 amazonPosTopics %>%
   group_by(Index) %>%
   gather(`Topic1`, `Topic2`, `Topic3`, `Topic4`, key = "Topic", value = "Present") %>%
@@ -674,50 +741,7 @@ app_documents %>%
 # clearly we don't have great predictive power to identify apps based on the reviews
 
 
-######-----------##########
-            ######-----------##########
-            ihr <- topicgraph(ihr_td, topicnumber)
-            ihr$plots
-            ihr.topics<-as_data_frame(ihr$topics) %>%
-              mutate(ihrTopic = topic) %>%
-              select(-topic)
-            
-            pandora <- topicgraph(pandora_td, topicnumber)
-            pandora$plots
-            pandora.topics<-as_data_frame(pandora$topics) %>%
-              mutate(pandoraTopic = topic) %>%
-              select(-topic)
-            
-            spotify <- topicgraph(spotify_td, topicnumber)
-            spotify$plots
-            spotify.topics<-as_data_frame(spotify$topics) %>%
-              mutate(spotifyTopic = topic) %>%
-              select(-topic)
-            
-            # aggregate topics & terms; try to identify unique topics per app
-            appTopics <- amazon.topics %>%
-              left_join(ihr.topics, by = c("term" = "term")) %>%
-              left_join(pandora.topics, by = c("term" = "term")) %>%
-              left_join(spotify.topics, by = c("term" = "term"))
-            
-            appTopicsNA <- appTopics %>%
-              mutate(findNA = beta.x * beta.y * beta.x.x * beta.y.y) 
-            appTopicsNA <- appTopicsNA %>%
-              filter(is.na(findNA))
-
-            
-            amazon_pos$Product <- as.factor(amazon_pos$Product)
-app_documents <- amazon_pos %>%
-  select(Index, Product) %>%
-  full_join(total_documents, by = c("Index" = "document")) %>%
-  group_by(Index) %>%
-  mutate(dups = duplicated(Index, topic)) %>%
-  filter(!dups) %>%
-  select(-dups) %>%
-  ungroup() %>%
-  mutate(score = topic * gamma)           
-            
-            
+           
 ### code to run topic model
 # for n most predictive models, rerurn to explore further
 # turn tidy framework into dfm, then add tf_idf, then cast as dtm for topicmodels
@@ -789,6 +813,81 @@ app_documents %>%
                   color = Product),
               alpha = .05)
 # clearly we don't have great predictive power to identify apps based on the reviews
+
+#--------------------------------------------------------------------------------------------------
+### Identify negative work frequency
+
+library(zoo)
+
+source("readin.R")
+
+# Import data w/ appropriate col typing
+train_lem <- readin(filename="train_lem.csv", subfolder="Scraped Data", infolder=TRUE)
+colnames(train_lem) <- c('Index','Product', 'Date', 'Stars','Review')
+train_lem$Product <- as.factor(train_lem$Product)
+train_lem$Date <- as.Date(train_lem$Date)
+
+dfm_df <- big_td %>%
+  cast_dfm(term = token, document = Index, value = n) %>%
+  dfm(remove_punct = TRUE, remove_numbers = TRUE, tolower = TRUE) %>%
+  dfm_trim(min_count = 4, max_docfreq = 1000, verbose = TRUE) %>%
+  tfidf() 
+
+dfm_df <- big_td %>%
+  select(-n) %>%
+  
+  spread/gather/unite...
+
+amazonNegTopics <- train_lem %>%
+  filter(Stars < 4) %>%
+  mutate(store = if_else(grepl(" store ", Review, perl=T, ignore.case=T), 1, 0)) %>%
+  mutate(sd = if_else(grepl(" sd ", Review, perl=T, ignore.case=T), 1, 0)) %>%
+  mutate(crash = if_else(grepl(" crash ", Review, perl=T, ignore.case=T), 1, 0)) %>%
+  mutate(horrible = if_else(grepl(" horrible ", Review, perl=T, ignore.case=T), 1, 0)) %>%
+  mutate(commercial = if_else(grepl(" commercial ", Review, perl=T, ignore.case=T), 1, 0)) %>%
+  select(-Review) 
+
+amazonNegTopics <- amazonNegTopics %>%
+  mutate(quarter = as.Date(as.yearqtr(Date))) %>%
+  group_by(quarter) %>%
+  add_count(quarter) %>%
+  mutate(storen = sum(store), sdn = sum(sd), crashn = sum(crash), 
+         horriblen = sum(horrible), commercialn = sum(commercial)) %>%
+  mutate(storeprop = storen/n, sdprop = sdn/n, crashprop = crashn/n,
+         horribleprop = horriblen/n, commercialprop = commercialn/n)
+
+amazonNegWords <- amazonNegTopics %>%
+  select(quarter,storeprop,crashprop,horribleprop,commercialprop) %>%
+  mutate(dups = duplicated(quarter)) %>%
+  filter(!dups) %>%
+  select(-dups)
+
+write.csv(amazonNegWords, file.path(getwd(),"negativeWordsForCharts.csv"))
+
+ggplot(amazonNegTopics) + 
+  geom_line(aes(quarter, storen), color = "Red") + 
+  geom_line(aes(quarter, sdn), color = "Blue") + 
+  geom_line(aes(quarter, crashn), color = "Green") + 
+  geom_line(aes(quarter, horriblen), color = "Yellow") +
+    geom_line(aes(quarter, commercialn), color = "Purple") +
+  geom_point(aes(quarter, storen), color = "Red", size = 3) +
+  geom_point(aes(quarter, sdn), color = "Blue", size = 3) + 
+  geom_point(aes(quarter, crashn), color = "Green", size = 3) +
+  geom_point(aes(quarter, horriblen), color = "Yellow", size = 3) +
+  geom_point(aes(quarter, commercialn), color = "Purple", size = 3)
+
+ggplot(amazonNegTopics) + 
+  geom_line(aes(quarter, storeprop), color = "Red") + 
+  geom_line(aes(quarter, sdprop), color = "Blue") + 
+  geom_line(aes(quarter, crashprop), color = "Green") + 
+  geom_line(aes(quarter, horribleprop), color = "Yellow") +
+    geom_line(aes(quarter, commercialprop), color = "Purple") +
+  geom_point(aes(quarter, storeprop), color = "Red", size = 3) +
+  geom_point(aes(quarter, sdprop), color = "Blue", size = 3) + 
+  geom_point(aes(quarter, crashprop), color = "Green", size = 3) +
+  geom_point(aes(quarter, horribleprop), color = "Yellow", size = 3) +
+  geom_point(aes(quarter, commercialprop), color = "Purple", size = 3)
+
 
 #--------------------------------------------------------------------------------------------------
 
